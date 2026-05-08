@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('order_items', function (Blueprint $table) {
-            $table->uuid('order_item_id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('order_item_id')->primary();
             $table->uuid('order_id');
             $table->string('product_code', 50);
             $table->string('product_name', 200);

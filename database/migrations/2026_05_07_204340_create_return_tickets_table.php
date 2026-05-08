@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('return_tickets', function (Blueprint $table) {
-            $table->uuid('ticket_id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('ticket_id')->primary();
             $table->string('tracking_code', 50)->unique();
             $table->uuid('order_id');
             $table->enum('current_status', [

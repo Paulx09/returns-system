@@ -13,7 +13,7 @@ return new class extends Migration
         // DB::statement("CREATE TYPE user_role AS ENUM ('admin', 'support')");
         
         Schema::create('users', function (Blueprint $table) {
-            $table->uuid('user_id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('user_id')->primary();
             $table->string('full_name', 150);
             $table->string('email', 150)->unique();
             $table->text('password_hash');

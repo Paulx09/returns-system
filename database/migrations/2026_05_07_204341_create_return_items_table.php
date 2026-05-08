@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('return_items', function (Blueprint $table) {
-            $table->uuid('return_item_id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('return_item_id')->primary();
             $table->uuid('ticket_id')->index(); // Index from raw sql
             $table->uuid('order_item_id');
             $table->uuid('reason_id');

@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('return_reasons', function (Blueprint $table) {
-            $table->uuid('reason_id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('reason_id')->primary();
             $table->string('name', 100)->unique();
             $table->text('description')->nullable();
             $table->timestamps();

@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('ticket_status_history', function (Blueprint $table) {
-            $table->uuid('history_id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('history_id')->primary();
             $table->uuid('ticket_id')->index(); // Index from raw sql
             $table->enum('old_status', [
                 'received',

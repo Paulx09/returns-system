@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('evidences', function (Blueprint $table) {
-            $table->uuid('evidence_id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('evidence_id')->primary();
             $table->uuid('ticket_id');
             $table->string('file_name', 255);
             $table->text('file_path');

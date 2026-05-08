@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('external_orders_cache', function (Blueprint $table) {
-            $table->uuid('order_id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('order_id')->primary();
             $table->string('order_number', 50)->unique();
             $table->string('customer_full_name', 150);
             $table->string('customer_email', 150);

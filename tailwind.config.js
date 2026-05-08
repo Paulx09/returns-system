@@ -13,8 +13,17 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', 'Figtree', ...defaultTheme.fontFamily.sans],
             },
+            colors: {
+                'tailoy': {
+                    'yellow': '#FFDD00',
+                    'blue': '#002E6E',
+                    'blue-light': '#00439E',
+                    'blue-dark': '#001A40',
+                    'red': '#E3001B',
+                }
+            }
         },
     },
 
