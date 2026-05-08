@@ -50,7 +50,7 @@ class CustomerAuthController extends Controller
         // Prevent session fixation
         $request->session()->regenerate();
 
-        return redirect('/returns/dashboard');
+        return redirect()->route('returns.dashboard');
     }
 
     public function destroy(Request $request)
@@ -58,6 +58,6 @@ class CustomerAuthController extends Controller
         $request->session()->forget('customer_order_id');
         $request->session()->regenerate();
 
-        return redirect('/returns/start');
+        return redirect()->route('returns.start');
     }
 }

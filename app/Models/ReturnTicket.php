@@ -15,6 +15,15 @@ class ReturnTicket extends Model
 
     protected $primaryKey = 'ticket_id';
 
+    public const STATUSES = [
+        'received',
+        'under_review',
+        'approved',
+        'rejected',
+        'more_information_requested',
+        'closed',
+    ];
+
     protected $fillable = [
         'tracking_code',
         'order_id',

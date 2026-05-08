@@ -1,0 +1,27 @@
+{
+    "resources/js/app.jsx": {
+        "file": "assets/app.js",
+        "src": "resources/js/app.jsx",
+        "isEntry": true
+    },
+    "resources/js/Pages/Returns/Start.jsx": {
+        "file": "assets/Returns/Start.js",
+        "src": "resources/js/Pages/Returns/Start.jsx"
+    },
+    "resources/js/Pages/Returns/Dashboard.jsx": {
+        "file": "assets/Returns/Dashboard.js",
+        "src": "resources/js/Pages/Returns/Dashboard.jsx"
+    },
+    "resources/js/Pages/Returns/Success.jsx": {
+        "file": "assets/Returns/Success.js",
+        "src": "resources/js/Pages/Returns/Success.jsx"
+    },
+    "resources/js/Pages/Admin/Tickets/Index.jsx": {
+        "file": "assets/Admin/Tickets/Index.js",
+        "src": "resources/js/Pages/Admin/Tickets/Index.jsx"
+    },
+    "resources/js/Pages/Admin/Tickets/Show.jsx": {
+        "file": "assets/Admin/Tickets/Show.js",
+        "src": "resources/js/Pages/Admin/Tickets/Show.jsx"
+    }
+}

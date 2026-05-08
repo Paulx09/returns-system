@@ -1,4 +1,4 @@
-import { useForm, Head } from '@inertiajs/react';
+import { useForm, Head, Link } from '@inertiajs/react';
 
 export default function Start() {
     const { data, setData, post, processing, errors } = useForm({
@@ -92,6 +92,16 @@ export default function Start() {
                 <div className="mt-6 text-center text-xs text-gray-500">
                     * Solo puedes solicitar la devolución dentro de los 7 días calendario posteriores a tu compra.
                 </div>
+            </div>
+
+            {/* Acceso administrativo — discreto, al pie de página */}
+            <div className="mt-8 text-center">
+                <Link
+                    href="/admin/tickets"
+                    className="text-xs text-gray-400 hover:text-gray-600 underline transition"
+                >
+                    Acceso Administrativo
+                </Link>
             </div>
         </div>
     );

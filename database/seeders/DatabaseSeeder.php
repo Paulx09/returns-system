@@ -13,23 +13,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Admin
-        User::create([
-            'full_name' => 'Admin Sistema',
-            'email' => 'admin@tailoy.com.pe',
-            'password_hash' => Hash::make('password123'),
-            'role' => 'admin',
-        ]);
-        
-        // Support
-        User::create([
-            'full_name' => 'Soporte Cliente',
-            'email' => 'soporte@tailoy.com.pe',
-            'password_hash' => Hash::make('password123'),
-            'role' => 'support',
-        ]);
-
         $this->call([
+            AdminSeeder::class,
             ReturnReasonSeeder::class,
             ExternalOrderCacheSeeder::class,
         ]);

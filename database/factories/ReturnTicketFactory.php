@@ -18,7 +18,11 @@ class ReturnTicketFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'tracking_code'  => 'RET-' . strtoupper(fake()->unique()->bothify('########')),
+            'order_id'       => \App\Models\ExternalOrderCache::factory(),
+            'current_status' => fake()->randomElement(\App\Models\ReturnTicket::STATUSES),
+            'customer_comment' => fake()->optional()->sentence(),
+            'created_by_user_id' => null,
         ];
     }
 }
