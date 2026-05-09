@@ -168,7 +168,7 @@ export default function Show({ ticket, statuses }) {
                                     {ticket.evidences.map(ev => (
                                         <li key={ev.evidence_id ?? ev.id}>
                                             <a
-                                                href={`/storage/${ev.file_path}`}
+                                                href={route('admin.evidences.show', ev.evidence_id ?? ev.id)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 hover:underline"

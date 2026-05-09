@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Evidence;
 use App\Models\ReturnTicket;
 use App\Models\TicketStatusHistory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AdminTicketController extends Controller
 {
@@ -72,12 +75,15 @@ class AdminTicketController extends Controller
             ],
         ]);
 
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
         // RBAC: solo admin puede cerrar tickets
-        if ($validated['new_status'] === 'closed' && auth()->user()->role !== 'admin') {
+        if ($validated['new_status'] === 'closed' && $user->role !== 'admin') {
             abort(403, 'Solo administradores pueden cerrar tickets.');
         }
 
-        DB::transaction(function () use ($ticket, $validated): void {
+        DB::transaction(function () use ($ticket, $validated, $user): void {
             $oldStatus = $ticket->current_status;
 
             $ticket->update(['current_status' => $validated['new_status']]);
@@ -86,7 +92,7 @@ class AdminTicketController extends Controller
                 'ticket_id'          => $ticket->ticket_id,
                 'old_status'         => $oldStatus,
                 'new_status'         => $validated['new_status'],
-                'changed_by_user_id' => auth()->id(),
+                'changed_by_user_id' => $user->id,
                 'comment'            => $validated['comment'] ?? null,
             ]);
         });
@@ -94,5 +100,22 @@ class AdminTicketController extends Controller
         return redirect()
             ->route('admin.tickets.show', $ticket->ticket_id)
             ->with('success', 'Estado actualizado correctamente.');
+    }
+
+    /**
+     * Descargar o visualizar evidencia (protegida por middleware admin).
+     */
+    public function showEvidence(Evidence $evidence): BinaryFileResponse
+    {
+        if (!Storage::disk('local')->exists($evidence->file_path)) {
+            abort(404, 'La evidencia solicitada no existe.');
+        }
+
+        $absolutePath = Storage::disk('local')->path($evidence->file_path);
+
+        return response()->file($absolutePath, [
+            'Content-Type' => $evidence->mime_type,
+            'Content-Disposition' => 'inline; filename="' . $evidence->file_name . '"'
+        ]);
     }
 }
