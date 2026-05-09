@@ -28,6 +28,10 @@ Route::prefix('admin')
         Route::get('/tickets/{ticket}', [AdminTicketController::class, 'show'])
             ->name('tickets.show');
 
+        // Servir evidencias (Privadas)
+        Route::get('/evidences/{evidence}', [AdminTicketController::class, 'showEvidence'])
+            ->name('evidences.show');
+
         Route::patch('/tickets/{ticket}/status', [AdminTicketController::class, 'updateStatus'])
             ->name('tickets.update-status');
     });
