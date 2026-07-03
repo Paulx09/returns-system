@@ -37,31 +37,32 @@ export default function Index({ tickets, filters, statuses }) {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 flex flex-col">
             <Head title="Panel Administrativo — Tai Loy" />
 
             {/* Header */}
-            <header className="bg-white shadow-sm border-b-4 border-blue-700">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900">Portal de Devoluciones</h1>
-                        <p className="text-sm text-gray-500">Panel Administrativo — Tai Loy</p>
-                    </div>
+            <header className="bg-[#05a060] shadow-md w-full">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+                    <img 
+                        src="/logo2.webp" 
+                        alt="Tai Loy" 
+                        className="h-10 w-auto object-contain" 
+                    />
                     <Link
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="text-sm text-gray-500 hover:text-gray-700 underline"
+                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-bold rounded-md text-[#002E6E] bg-[#fbdb04] hover:bg-[#05a060] hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05a060] transition-colors duration-200"
                     >
-                        Cerrar sesión
+                        Cerrar Sesión
                     </Link>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
 
                 {/* Filtros */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-t-4 border-t-[#fbdb04] p-5 mb-6">
                     <h2 className="text-sm font-semibold text-gray-700 mb-4">Filtros de búsqueda</h2>
                     <form onSubmit={applyFilters} className="flex flex-wrap gap-4 items-end">
                         <div>
@@ -70,7 +71,7 @@ export default function Index({ tickets, filters, statuses }) {
                                 id="filter-status"
                                 value={form.status}
                                 onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                                className="block w-48 rounded-md border-gray-300 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                className="block w-48 rounded-md border-gray-300 text-sm shadow-sm focus:ring-[#05a060] focus:border-[#05a060]"
                             >
                                 <option value="">Todos los estados</option>
                                 {statuses.map(s => (
@@ -86,7 +87,7 @@ export default function Index({ tickets, filters, statuses }) {
                                 type="date"
                                 value={form.date_from}
                                 onChange={e => setForm(f => ({ ...f, date_from: e.target.value }))}
-                                className="block rounded-md border-gray-300 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                className="block rounded-md border-gray-300 text-sm shadow-sm focus:ring-[#05a060] focus:border-[#05a060]"
                             />
                         </div>
 
@@ -97,14 +98,14 @@ export default function Index({ tickets, filters, statuses }) {
                                 type="date"
                                 value={form.date_to}
                                 onChange={e => setForm(f => ({ ...f, date_to: e.target.value }))}
-                                className="block rounded-md border-gray-300 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                className="block rounded-md border-gray-300 text-sm shadow-sm focus:ring-[#05a060] focus:border-[#05a060]"
                             />
                         </div>
 
                         <div className="flex gap-2">
                             <button
                                 type="submit"
-                                className="px-4 py-2 bg-blue-700 text-white text-sm font-medium rounded-md hover:bg-blue-800 transition"
+                                className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-bold rounded-md text-[#002E6E] bg-[#fbdb04] hover:bg-[#05a060] hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05a060] transition-colors duration-200"
                             >
                                 Filtrar
                             </button>
@@ -120,7 +121,7 @@ export default function Index({ tickets, filters, statuses }) {
                 </div>
 
                 {/* Tabla */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-t-4 border-t-[#05a060] overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                         <h2 className="text-base font-semibold text-gray-900">
                             Solicitudes de Devolución
@@ -167,7 +168,7 @@ export default function Index({ tickets, filters, statuses }) {
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <Link
                                                     href={route('admin.tickets.show', ticket.ticket_id)}
-                                                    className="text-blue-700 hover:text-blue-900 text-sm font-medium underline"
+                                                    className="text-[#05a060] hover:text-[#04854f] text-sm font-medium underline"
                                                 >
                                                     Ver detalle →
                                                 </Link>
@@ -189,7 +190,7 @@ export default function Index({ tickets, filters, statuses }) {
                                     preserveScroll
                                     className={`px-3 py-1 text-sm rounded-md border transition ${
                                         link.active
-                                            ? 'bg-blue-700 text-white border-blue-700'
+                                            ? 'bg-[#05a060] text-white border-[#05a060]'
                                             : link.url
                                                 ? 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                                                 : 'bg-white text-gray-400 border-gray-200 cursor-not-allowed'

@@ -21,7 +21,7 @@ export default function Start() {
                 <div className="w-full md:w-1/2 bg-gray-50 p-8 flex flex-col justify-center items-center border-b md:border-b-0 md:border-r border-gray-200">
                     <div className="text-center space-y-6 max-w-sm">
                         <img 
-                            src="/logo.webp" 
+                            src="/logo1.webp" 
                             alt="Tai Loy Logo" 
                             className="w-56 h-auto mx-auto object-contain drop-shadow-sm"
                         />
@@ -102,7 +102,7 @@ export default function Start() {
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-[#002E6E] bg-[#fbdb04] hover:bg-[#05a060] hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05a060] disabled:opacity-50 transition duration-200 ease-in-out"
+                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-[#05a060] hover:bg-[#04854f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05a060] disabled:opacity-50 transition duration-200 ease-in-out"
                             >
                                 {processing ? 'Verificando...' : 'Iniciar Solicitud'}
                             </button>

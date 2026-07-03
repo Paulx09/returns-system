@@ -21,12 +21,11 @@ export default function Login({ status, canResetPassword }) {
 
             <div className="w-full max-w-4xl bg-white shadow-2xl rounded-2xl overflow-hidden flex flex-col md:flex-row border-t-8 border-t-[#fbdb04] border-l-0 md:border-l-8 md:border-l-[#05a060] border-b-8 border-b-[#05a060] md:border-b-0">
                 
-                {/* Left Column: Admin Branding */}
                 <div className="w-full md:w-1/2 bg-[#002E6E] p-8 flex flex-col justify-center items-center text-white border-b md:border-b-0 md:border-r border-slate-700">
                     <div className="text-center space-y-6 max-w-sm">
                         <div className="bg-white p-4 rounded-xl shadow-md inline-block">
                             <img 
-                                src="/logo.webp" 
+                                src="/logo1.webp" 
                                 alt="Tai Loy Logo" 
                                 className="w-44 h-auto mx-auto object-contain"
                             />

@@ -19,6 +19,7 @@ export default {
                 'tailoy': {
                     'yellow': '#FFDD00',
                     'blue': '#002E6E',
+                    'green': '#05A060',
                     'blue-light': '#00439E',
                     'blue-dark': '#001A40',
                     'red': '#E3001B',
