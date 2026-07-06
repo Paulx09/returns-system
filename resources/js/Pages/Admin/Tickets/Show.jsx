@@ -24,9 +24,9 @@ function StatusBadge({ status }) {
     );
 }
 
-function SectionCard({ title, children }) {
+function SectionCard({ title, children, borderColorClass = "border-t-4 border-t-[#05a060]" }) {
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${borderColorClass} overflow-hidden`}>
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">{title}</h2>
             </div>
@@ -51,35 +51,44 @@ export default function Show({ ticket, statuses }) {
     const isCommentRequired = commentRequired.includes(data.new_status);
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 flex flex-col">
             <Head title={`Ticket ${ticket.tracking_code} — Admin`} />
 
             {/* Header */}
-            <header className="bg-white shadow-sm border-b-4 border-blue-700">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href={route('admin.tickets.index')}
-                            className="text-blue-700 hover:text-blue-900 text-sm font-medium"
-                        >
-                            ← Volver al listado
-                        </Link>
-                        <span className="text-gray-300">|</span>
-                        <h1 className="text-lg font-bold text-gray-900 font-mono">{ticket.tracking_code}</h1>
-                        <StatusBadge status={ticket.current_status} />
-                    </div>
+            <header className="bg-[#05a060] shadow-md w-full">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+                    <img 
+                        src="/logo1.webp" 
+                        alt="Tai Loy" 
+                        className="h-10 w-auto object-contain" 
+                    />
                     <Link
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="text-sm text-gray-500 hover:text-gray-700 underline"
+                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-bold rounded-md text-[#002E6E] bg-[#fbdb04] hover:bg-[#05a060] hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05a060] transition-colors duration-200"
                     >
-                        Cerrar sesión
+                        Cerrar Sesión
                     </Link>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 flex-grow">
+
+                {/* Navigation/Title bar */}
+                <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href={route('admin.tickets.index')}
+                            className="text-[#05a060] hover:text-[#04854f] text-sm font-semibold flex items-center gap-1"
+                        >
+                            ← Volver al listado
+                        </Link>
+                        <span className="text-gray-300">|</span>
+                        <h1 className="text-xl font-bold text-gray-900 font-mono">{ticket.tracking_code}</h1>
+                        <StatusBadge status={ticket.current_status} />
+                    </div>
+                </div>
 
                 {/* Flash success */}
                 {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('success') && (
@@ -94,7 +103,7 @@ export default function Show({ ticket, statuses }) {
                     <div className="lg:col-span-2 space-y-6">
 
                         {/* Datos del pedido */}
-                        <SectionCard title="Información del Pedido">
+                        <SectionCard title="Información del Pedido" borderColorClass="border-t-4 border-t-[#fbdb04]">
                             <dl className="grid grid-cols-2 gap-4">
                                 <div>
                                     <dt className="text-xs text-gray-500 font-medium">N° de Pedido</dt>
@@ -110,7 +119,7 @@ export default function Show({ ticket, statuses }) {
                                 </div>
                                 <div>
                                     <dt className="text-xs text-gray-500 font-medium">Código de Seguimiento</dt>
-                                    <dd className="mt-1 text-sm font-mono font-semibold text-blue-700">{ticket.tracking_code}</dd>
+                                    <dd className="mt-1 text-sm font-mono font-semibold text-[#05a060]">{ticket.tracking_code}</dd>
                                 </div>
                                 <div>
                                     <dt className="text-xs text-gray-500 font-medium">Fecha de Solicitud</dt>
@@ -171,7 +180,7 @@ export default function Show({ ticket, statuses }) {
                                                 href={route('admin.evidences.show', ev.evidence_id ?? ev.id)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 hover:underline"
+                                                className="flex items-center gap-2 text-sm text-[#05a060] hover:text-[#04854f] hover:underline"
                                             >
                                                 <span className="text-lg">📎</span>
                                                 <span className="truncate">{ev.file_name}</span>
@@ -190,7 +199,7 @@ export default function Show({ ticket, statuses }) {
                                 <ol className="relative border-l border-gray-200 ml-2 space-y-4">
                                     {ticket.status_history.map(entry => (
                                         <li key={entry.history_id} className="ml-4">
-                                            <div className="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-blue-600 border-2 border-white" />
+                                            <div className="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-[#05a060] border-2 border-white" />
                                             <div>
                                                 <StatusBadge status={entry.new_status} />
                                                 <p className="text-xs text-gray-400 mt-1">
@@ -210,9 +219,9 @@ export default function Show({ ticket, statuses }) {
                         </SectionCard>
 
                         {/* Formulario de cambio de estado */}
-                        <div className="bg-white rounded-lg shadow-sm border-2 border-blue-200 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-blue-100 bg-blue-50">
-                                <h2 className="text-sm font-semibold text-blue-900 uppercase tracking-wider">Actualizar Estado</h2>
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-t-4 border-t-[#05a060] overflow-hidden">
+                            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Actualizar Estado</h2>
                             </div>
                             <form onSubmit={submitStatus} className="px-6 py-5 space-y-4">
                                 <div>
@@ -224,7 +233,7 @@ export default function Show({ ticket, statuses }) {
                                         value={data.new_status}
                                         onChange={e => setData('new_status', e.target.value)}
                                         required
-                                        className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                        className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:ring-[#05a060] focus:border-[#05a060]"
                                     >
                                         <option value="">Seleccione...</option>
                                         {statuses
@@ -254,7 +263,7 @@ export default function Show({ ticket, statuses }) {
                                         onChange={e => setData('comment', e.target.value)}
                                         required={isCommentRequired}
                                         placeholder={isCommentRequired ? 'Explique el motivo...' : 'Observaciones adicionales...'}
-                                        className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                        className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:ring-[#05a060] focus:border-[#05a060]"
                                     />
                                     {errors.comment && (
                                         <p className="mt-1 text-xs text-red-600">{errors.comment}</p>
@@ -264,7 +273,7 @@ export default function Show({ ticket, statuses }) {
                                 <button
                                     type="submit"
                                     disabled={processing || !data.new_status}
-                                    className="w-full py-2.5 px-4 bg-blue-700 text-white text-sm font-semibold rounded-md hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                    className="w-full py-2.5 px-4 bg-[#fbdb04] text-[#002E6E] text-sm font-bold rounded-md hover:bg-[#05a060] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
                                 >
                                     {processing ? 'Guardando...' : 'Actualizar Estado'}
                                 </button>
