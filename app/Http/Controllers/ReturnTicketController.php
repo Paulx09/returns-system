@@ -7,14 +7,16 @@ use App\Models\ExternalOrderCache;
 use App\Models\ReturnItem;
 use App\Models\ReturnReason;
 use App\Models\ReturnTicket;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ReturnTicketController extends Controller
 {
-    public function dashboard(Request $request)
+    public function dashboard(Request $request): Response
     {
         $orderId = $request->session()->get('customer_order_id');
         $order = ExternalOrderCache::with('orderItems')->findOrFail($orderId);
@@ -26,7 +28,7 @@ class ReturnTicketController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'items' => 'required|array|min:1',
@@ -87,7 +89,7 @@ class ReturnTicketController extends Controller
         }
     }
 
-    public function success(Request $request)
+    public function success(Request $request): Response
     {
         return Inertia::render('Returns/Success', [
             'trackingCode' => session('tracking_code')

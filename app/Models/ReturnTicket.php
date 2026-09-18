@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\ReturnTicketFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ReturnTicket extends Model
 {
+    /** @use HasFactory<ReturnTicketFactory> */
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $primaryKey = 'ticket_id';
@@ -32,26 +34,31 @@ class ReturnTicket extends Model
         'created_by_user_id',
     ];
 
+    /** @return BelongsTo<ExternalOrderCache, $this> */
     public function order(): BelongsTo
     {
         return $this->belongsTo(ExternalOrderCache::class, 'order_id', 'order_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id', 'user_id');
     }
 
+    /** @return HasMany<ReturnItem, $this> */
     public function returnItems(): HasMany
     {
         return $this->hasMany(ReturnItem::class, 'ticket_id', 'ticket_id');
     }
 
+    /** @return HasMany<Evidence, $this> */
     public function evidences(): HasMany
     {
         return $this->hasMany(Evidence::class, 'ticket_id', 'ticket_id');
     }
 
+    /** @return HasMany<TicketStatusHistory, $this> */
     public function statusHistory(): HasMany
     {
         return $this->hasMany(TicketStatusHistory::class, 'ticket_id', 'ticket_id');

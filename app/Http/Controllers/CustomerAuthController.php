@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Services\ExternalOrderService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class CustomerAuthController extends Controller
 {
@@ -16,12 +18,12 @@ class CustomerAuthController extends Controller
         $this->orderService = $orderService;
     }
 
-    public function create()
+    public function create(): Response
     {
         return Inertia::render('Returns/Start');
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'order_number' => 'required|string',
@@ -53,7 +55,7 @@ class CustomerAuthController extends Controller
         return redirect()->route('returns.dashboard');
     }
 
-    public function destroy(Request $request)
+    public function destroy(Request $request): RedirectResponse
     {
         $request->session()->forget('customer_order_id');
         $request->session()->regenerate();
