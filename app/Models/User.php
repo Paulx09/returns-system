@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 
 class User extends Authenticatable
 {
@@ -17,6 +18,15 @@ class User extends Authenticatable
     protected $primaryKey = 'user_id';
     protected $keyType = 'string';
     public $incrementing = false;
+
+    /**
+     * Default model attributes.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'role' => 'support',
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -29,6 +39,7 @@ class User extends Authenticatable
         'email',
         'email_verified_at',
         'password_hash',
+        'password',
         'role',
     ];
 
@@ -39,6 +50,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password_hash',
+        'password',
     ];
 
     /**
@@ -63,6 +75,24 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the password attribute mapping.
+     */
+    public function getPasswordAttribute(): ?string
+    {
+        return $this->attributes['password_hash'] ?? null;
+    }
+
+    /**
+     * Set the password attribute mapping.
+     */
+    public function setPasswordAttribute(string $value): void
+    {
+        $this->attributes['password_hash'] = Hash::needsRehash($value)
+            ? Hash::make($value)
+            : $value;
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -82,5 +112,36 @@ class User extends Authenticatable
     public function getAuthPassword()
     {
         return $this->password_hash;
+    }
+
+    /**
+     * Get the column name for the "remember me" token.
+     *
+     * @return string
+     */
+    public function getRememberTokenName()
+    {
+        return '';
+    }
+
+    /**
+     * Get the value of the "remember me" token.
+     *
+     * @return string|null
+     */
+    public function getRememberToken()
+    {
+        return null;
+    }
+
+    /**
+     * Set the value of the "remember me" token.
+     *
+     * @param  string|null  $value
+     * @return void
+     */
+    public function setRememberToken($value)
+    {
+        // no-op because users table does not have remember_token column
     }
 }
