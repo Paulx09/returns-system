@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature\Models;
+namespace Tests\Unit\Models;
 
 use App\Models\ExternalOrderCache;
 use App\Models\OrderItem;
@@ -19,7 +19,7 @@ class ExternalOrderCacheTest extends TestCase
         $this->assertDatabaseHas('external_orders_cache', [
             'order_id' => $order->order_id,
         ]);
-        
+
         $this->assertTrue(Str::isUuid((string) $order->order_id));
     }
 
@@ -37,7 +37,7 @@ class ExternalOrderCacheTest extends TestCase
     public function test_it_uses_soft_deletes(): void
     {
         $order = ExternalOrderCache::factory()->create();
-        
+
         $order->delete();
 
         $this->assertSoftDeleted('external_orders_cache', [

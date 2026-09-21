@@ -18,7 +18,10 @@ class EvidenceFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'ticket_id' => \App\Models\ReturnTicket::factory(),
+            'file_name' => fake()->word() . '.jpg',
+            'file_path' => 'evidences/' . fake()->uuid() . '.jpg',
+            'mime_type' => 'image/jpeg',
         ];
     }
 }

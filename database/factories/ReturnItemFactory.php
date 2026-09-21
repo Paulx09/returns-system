@@ -2,7 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Models\OrderItem;
 use App\Models\ReturnItem;
+use App\Models\ReturnReason;
+use App\Models\ReturnTicket;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,7 +21,11 @@ class ReturnItemFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'ticket_id' => ReturnTicket::factory(),
+            'order_item_id' => OrderItem::factory(),
+            'reason_id' => ReturnReason::factory(),
+            'quantity_to_return' => fake()->numberBetween(1, 3),
+            'admin_comment' => fake()->optional()->sentence(),
         ];
     }
 }
