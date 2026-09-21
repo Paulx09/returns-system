@@ -18,6 +18,8 @@ xdebug/
 # Static Analysis
 .phpstan.cache/
 phpstan.neon.cache/
+storage/framework/phpstan/
+
 
 # Laravel & Logs
 storage/framework/cache/*
