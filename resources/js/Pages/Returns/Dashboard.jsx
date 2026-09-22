@@ -51,6 +51,10 @@ export default function Dashboard({ order, reasons }) {
         post(route('returns.tickets.store'));
     };
 
+    const canSubmit = data.items.length > 0
+        && data.items.every(item => item.return_reason_id && item.quantity > 0)
+        && data.evidences.length > 0;
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <Head title="Dashboard de Devoluciones - Tai Loy" />
@@ -121,8 +125,9 @@ export default function Dashboard({ order, reasons }) {
                                             {isSelected && itemData && (
                                                 <div className="ml-8 mt-4 grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6 bg-gray-50 p-4 rounded-md border border-gray-100">
                                                     <div className="sm:col-span-2">
-                                                        <label className="block text-xs font-semibold text-gray-700">Cantidad a devolver</label>
+                                                        <label htmlFor={`quantity-${item.order_item_id}`} className="block text-xs font-semibold text-gray-700">Cantidad a devolver</label>
                                                         <input
+                                                            id={`quantity-${item.order_item_id}`}
                                                             type="number"
                                                             min="1"
                                                             max={item.quantity}
@@ -133,8 +138,9 @@ export default function Dashboard({ order, reasons }) {
                                                     </div>
 
                                                     <div className="sm:col-span-2">
-                                                        <label className="block text-xs font-semibold text-gray-700">Motivo</label>
+                                                        <label htmlFor={`reason-${item.order_item_id}`} className="block text-xs font-semibold text-gray-700">Motivo</label>
                                                         <select
+                                                            id={`reason-${item.order_item_id}`}
                                                             value={itemData.return_reason_id}
                                                             onChange={(e) => updateItemData(item.order_item_id, 'return_reason_id', e.target.value)}
                                                             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#05a060] focus:border-[#05a060] sm:text-sm rounded-md"
@@ -148,8 +154,9 @@ export default function Dashboard({ order, reasons }) {
                                                     </div>
 
                                                     <div className="sm:col-span-2">
-                                                        <label className="block text-xs font-semibold text-gray-700">Estado del producto</label>
+                                                        <label htmlFor={`condition-${item.order_item_id}`} className="block text-xs font-semibold text-gray-700">Estado del producto</label>
                                                         <select
+                                                            id={`condition-${item.order_item_id}`}
                                                             value={itemData.condition}
                                                             onChange={(e) => updateItemData(item.order_item_id, 'condition', e.target.value)}
                                                             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#05a060] focus:border-[#05a060] sm:text-sm rounded-md"
@@ -175,9 +182,10 @@ export default function Dashboard({ order, reasons }) {
                                     
                                     <div className="space-y-6">
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-700">Comentarios (Opcional)</label>
+                                            <label htmlFor="customer_notes" className="block text-sm font-semibold text-gray-700">Comentarios (Opcional)</label>
                                             <p className="text-xs text-gray-500 mb-2">Cuéntanos más detalles sobre el problema.</p>
                                             <textarea
+                                                id="customer_notes"
                                                 rows={3}
                                                 className="shadow-sm focus:ring-[#05a060] focus:border-[#05a060] block w-full sm:text-sm border-gray-300 rounded-md"
                                                 value={data.customer_notes}
@@ -186,10 +194,11 @@ export default function Dashboard({ order, reasons }) {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-700">Fotos o Documentos de Evidencia</label>
+                                            <label htmlFor="evidences" className="block text-sm font-semibold text-gray-700">Fotos o Documentos de Evidencia</label>
                                             <p className="text-xs text-gray-500 mb-2">Sube imágenes del producto dañado o comprobantes. (Max 5MB por archivo, JPG/PNG/PDF)</p>
                                             
                                             <input
+                                                id="evidences"
                                                 type="file"
                                                 multiple
                                                 accept=".jpg,.jpeg,.png,.pdf"
@@ -210,7 +219,7 @@ export default function Dashboard({ order, reasons }) {
                                 <div className="flex justify-end">
                                     <button
                                         type="submit"
-                                        disabled={processing}
+                                        disabled={processing || !canSubmit}
                                         className="inline-flex justify-center py-3 px-8 border border-transparent shadow-sm text-base font-bold rounded-md text-[#002E6E] bg-[#fbdb04] hover:bg-[#05a060] hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05a060] disabled:opacity-50 transition-colors duration-200"
                                     >
                                         {processing ? 'Enviando...' : 'Enviar Solicitud'}
