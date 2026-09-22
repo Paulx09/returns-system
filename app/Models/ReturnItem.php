@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\ReturnItemFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReturnItem extends Model
 {
+    /** @use HasFactory<ReturnItemFactory> */
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $primaryKey = 'return_item_id';
@@ -26,16 +28,19 @@ class ReturnItem extends Model
         'quantity_to_return' => 'integer',
     ];
 
+    /** @return BelongsTo<ReturnTicket, $this> */
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(ReturnTicket::class, 'ticket_id', 'ticket_id');
     }
 
+    /** @return BelongsTo<OrderItem, $this> */
     public function orderItem(): BelongsTo
     {
         return $this->belongsTo(OrderItem::class, 'order_item_id', 'order_item_id');
     }
 
+    /** @return BelongsTo<ReturnReason, $this> */
     public function reason(): BelongsTo
     {
         return $this->belongsTo(ReturnReason::class, 'reason_id', 'reason_id');

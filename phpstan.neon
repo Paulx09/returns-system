@@ -1,0 +1,18 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 8
+    paths:
+        - app/Http/Controllers/CustomerAuthController.php
+        - app/Http/Controllers/ReturnTicketController.php
+        - app/Models/ExternalOrderCache.php
+        - app/Models/OrderItem.php
+        - app/Models/ReturnItem.php
+        - app/Models/ReturnReason.php
+        - app/Models/ReturnTicket.php
+        - app/Services/ExternalOrderService.php
+
+    tmpDir: storage/framework/phpstan
+    reportUnmatchedIgnoredErrors: true
+    treatPhpDocTypesAsCertain: true

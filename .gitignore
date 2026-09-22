@@ -4,7 +4,40 @@
 .env.backup
 .env.production
 .phpactor.json
+
+# Testing, Coverage & Profiling
+.phpunit.cache/
 .phpunit.result.cache
+coverage/
+html-report/
+*.cov
+.pcov
+xdebug/
+.xdebug-trace/
+
+# Static Analysis
+.phpstan.cache/
+phpstan.neon.cache/
+storage/framework/phpstan/
+
+
+# Laravel & Logs
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/testing/*
+storage/logs/*
+!storage/framework/cache/.gitignore
+!storage/framework/sessions/.gitignore
+!storage/framework/views/.gitignore
+!storage/framework/testing/.gitignore
+!storage/logs/.gitignore
+
+# Frontend & Dependencies
+node_modules/
+public/hot
+public/storage
+public/build/
 /.fleet
 /.idea
 /.nova

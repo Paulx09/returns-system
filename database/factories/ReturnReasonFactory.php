@@ -18,7 +18,8 @@ class ReturnReasonFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'name' => 'REASON-' . $this->faker->unique()->numberBetween(1000, 9999),
+            'description' => $this->faker->sentence(),
         ];
     }
 }
