@@ -46,6 +46,10 @@ export default function Dashboard({ order, reasons }) {
         }));
     };
 
+    const removeEvidence = (indexToRemove) => {
+        setData('evidences', data.evidences.filter((_, idx) => idx !== indexToRemove));
+    };
+
     const submit = (e) => {
         e.preventDefault();
         post(route('returns.tickets.store'));
@@ -64,7 +68,7 @@ export default function Dashboard({ order, reasons }) {
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
                     <img 
                         src="/logo2.webp" 
-                        alt="Tai Loy" 
+                        alt="Logo de Tai Loy" 
                         className="h-10 w-auto object-contain" 
                     />
                     <Link 
@@ -83,7 +87,7 @@ export default function Dashboard({ order, reasons }) {
                     <div className="bg-white shadow overflow-hidden sm:rounded-lg border-t-4 border-t-[#fbdb04] border-b-4 border-b-[#05a060] mb-8">
                         <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
                             <div>
-                                <h3 className="text-lg leading-6 font-bold text-gray-900">Pedido #{order.order_number}</h3>
+                                <h1 className="text-lg leading-6 font-bold text-gray-900">Pedido #{order.order_number}</h1>
                                 <p className="mt-1 max-w-2xl text-sm text-gray-500">
                                     Fecha de compra: {new Date(order.order_date).toLocaleDateString()}
                                 </p>
@@ -94,15 +98,15 @@ export default function Dashboard({ order, reasons }) {
                         </div>
                     </div>
 
-                    <form onSubmit={submit} className="space-y-8" encType="multipart/form-data">
+                    <form onSubmit={submit} className="space-y-8" encType="multipart/form-data" noValidate>
                         <div className="bg-white shadow overflow-hidden sm:rounded-lg border-t-4 border-t-[#05a060]">
                             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                                <h3 className="text-lg leading-6 font-bold text-gray-900">1. Selecciona los productos</h3>
+                                <h2 className="text-lg leading-6 font-bold text-gray-900">1. Selecciona los productos</h2>
                                 <p className="mt-1 text-sm text-gray-500">Marca los productos que deseas devolver o reportar por garantía.</p>
                             </div>
                             
                             <ul className="divide-y divide-gray-200">
-                                {order.order_items.map((item) => {
+                                {order.order_items.map((item, index) => {
                                     const isSelected = !!selectedItems[item.order_item_id];
                                     const itemData = data.items.find(i => i.order_item_id === item.order_item_id);
 
@@ -131,8 +135,10 @@ export default function Dashboard({ order, reasons }) {
                                                             type="number"
                                                             min="1"
                                                             max={item.quantity}
-                                                            value={itemData.quantity}
-                                                            onChange={(e) => updateItemData(item.order_item_id, 'quantity', parseInt(e.target.value))}
+                                                            value={itemData.quantity ?? ''}
+                                                            onChange={(e) => updateItemData(item.order_item_id, 'quantity', parseInt(e.target.value) || '')}
+                                                            aria-invalid={errors[`items.${index}.quantity`] ? 'true' : 'false'}
+                                                            aria-describedby={errors[`items.${index}.quantity`] ? `error-quantity-${item.order_item_id}` : undefined}
                                                             className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-[#05a060] focus:border-[#05a060] sm:text-sm"
                                                         />
                                                     </div>
@@ -143,6 +149,8 @@ export default function Dashboard({ order, reasons }) {
                                                             id={`reason-${item.order_item_id}`}
                                                             value={itemData.return_reason_id}
                                                             onChange={(e) => updateItemData(item.order_item_id, 'return_reason_id', e.target.value)}
+                                                            aria-invalid={errors[`items.${index}.return_reason_id`] ? 'true' : 'false'}
+                                                            aria-describedby={errors[`items.${index}.return_reason_id`] ? `error-reason-${item.order_item_id}` : undefined}
                                                             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#05a060] focus:border-[#05a060] sm:text-sm rounded-md"
                                                             required
                                                         >
@@ -159,6 +167,8 @@ export default function Dashboard({ order, reasons }) {
                                                             id={`condition-${item.order_item_id}`}
                                                             value={itemData.condition}
                                                             onChange={(e) => updateItemData(item.order_item_id, 'condition', e.target.value)}
+                                                            aria-invalid={errors[`items.${index}.condition`] ? 'true' : 'false'}
+                                                            aria-describedby={errors[`items.${index}.condition`] ? `error-condition-${item.order_item_id}` : undefined}
                                                             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#05a060] focus:border-[#05a060] sm:text-sm rounded-md"
                                                         >
                                                             <option value="sealed">Sellado / Intacto</option>
@@ -172,21 +182,26 @@ export default function Dashboard({ order, reasons }) {
                                     );
                                 })}
                             </ul>
-                            {errors.items && <p className="p-4 text-sm text-red-600 font-medium">{errors.items}</p>}
+                            {errors.items && (
+                                <p id="error-items" role="alert" aria-live="polite" className="p-4 text-sm text-red-600 font-medium">
+                                    {errors.items}
+                                </p>
+                            )}
                         </div>
 
                         {data.items.length > 0 && (
                             <>
                                 <div className="bg-white shadow overflow-hidden sm:rounded-lg border-t-4 border-t-[#05a060] px-4 py-5 sm:px-6">
-                                    <h3 className="text-lg leading-6 font-bold text-gray-900 mb-4">2. Detalles adicionales y Evidencia</h3>
+                                    <h2 className="text-lg leading-6 font-bold text-gray-900 mb-4">2. Detalles adicionales y Evidencia</h2>
                                     
                                     <div className="space-y-6">
                                         <div>
                                             <label htmlFor="customer_notes" className="block text-sm font-semibold text-gray-700">Comentarios (Opcional)</label>
-                                            <p className="text-xs text-gray-500 mb-2">Cuéntanos más detalles sobre el problema.</p>
+                                            <p id="customer_notes_help" className="text-xs text-gray-500 mb-2">Cuéntanos más detalles sobre el problema.</p>
                                             <textarea
                                                 id="customer_notes"
                                                 rows={3}
+                                                aria-describedby="customer_notes_help"
                                                 className="shadow-sm focus:ring-[#05a060] focus:border-[#05a060] block w-full sm:text-sm border-gray-300 rounded-md"
                                                 value={data.customer_notes}
                                                 onChange={e => setData('customer_notes', e.target.value)}
@@ -195,7 +210,7 @@ export default function Dashboard({ order, reasons }) {
 
                                         <div>
                                             <label htmlFor="evidences" className="block text-sm font-semibold text-gray-700">Fotos o Documentos de Evidencia</label>
-                                            <p className="text-xs text-gray-500 mb-2">Sube imágenes del producto dañado o comprobantes. (Max 5MB por archivo, JPG/PNG/PDF)</p>
+                                            <p id="evidences_help" className="text-xs text-gray-500 mb-2">Sube imágenes del producto dañado o comprobantes. (Max 5MB por archivo, JPG/PNG/PDF)</p>
                                             
                                             <input
                                                 id="evidences"
@@ -203,12 +218,43 @@ export default function Dashboard({ order, reasons }) {
                                                 multiple
                                                 accept=".jpg,.jpeg,.png,.pdf"
                                                 onChange={e => setData('evidences', Array.from(e.target.files))}
+                                                aria-invalid={errors.evidences || Object.keys(errors).some(k => k.startsWith('evidences.')) ? 'true' : 'false'}
+                                                aria-describedby={`evidences_help ${errors.evidences ? 'error-evidences' : ''}`}
                                                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#05a060] file:text-white hover:file:bg-[#04854f]"
                                             />
-                                            {errors.evidences && <p className="mt-2 text-sm text-red-600">{errors.evidences}</p>}
+
+                                            {data.evidences.length > 0 && (
+                                                <ul className="mt-3 space-y-2" aria-label="Lista de evidencias adjuntas">
+                                                    {data.evidences.map((file, idx) => (
+                                                        <li key={idx} className="flex items-center justify-between bg-gray-50 border border-gray-200 p-2 rounded text-xs">
+                                                            <span className="truncate max-w-xs text-gray-700">{file.name}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeEvidence(idx)}
+                                                                aria-label="Eliminar evidencia adjunta"
+                                                                className="text-red-500 hover:text-red-700 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                                </svg>
+                                                            </button>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+
+                                            {errors.evidences && (
+                                                <p id="error-evidences" role="alert" aria-live="polite" className="mt-2 text-sm text-red-600 font-medium">
+                                                    {errors.evidences}
+                                                </p>
+                                            )}
                                             {Object.keys(errors).map(key => {
                                                 if (key.startsWith('evidences.')) {
-                                                    return <p key={key} className="mt-1 text-sm text-red-600">{errors[key]}</p>;
+                                                    return (
+                                                        <p key={key} id={`error-${key}`} role="alert" aria-live="polite" className="mt-1 text-sm text-red-600 font-medium">
+                                                            {errors[key]}
+                                                        </p>
+                                                    );
                                                 }
                                                 return null;
                                             })}

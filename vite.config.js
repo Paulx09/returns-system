@@ -16,7 +16,10 @@ export default defineConfig({
         minThreads: 1,
         maxThreads: 1,
         setupFiles: './resources/js/__tests__/setup.js',
-        include: ['resources/js/__tests__/**/*.test.{js,jsx}'],
+        include: [
+            'resources/js/__tests__/**/*.test.{js,jsx}',
+            'resources/js/Pages/**/__tests__/**/*.test.{js,jsx}',
+        ],
         coverage: {
             provider: 'v8',
             reporter: ['text', 'html'],
