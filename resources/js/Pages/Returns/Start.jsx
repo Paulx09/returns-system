@@ -12,7 +12,7 @@ export default function Start() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4 sm:p-6">
+        <main className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4 sm:p-6">
             <Head title="Iniciar Solicitud de Devolución - Tai Loy" />
 
             <div className="w-full max-w-4xl bg-white shadow-2xl rounded-2xl overflow-hidden flex flex-col md:flex-row border-t-8 border-t-[#fbdb04] border-l-0 md:border-l-8 md:border-l-[#05a060] border-b-8 border-b-[#05a060] md:border-b-0">
@@ -22,7 +22,7 @@ export default function Start() {
                     <div className="text-center space-y-6 max-w-sm">
                         <img 
                             src="/logo1.webp" 
-                            alt="Tai Loy Logo" 
+                            alt="Logo de Tai Loy" 
                             className="w-56 h-auto mx-auto object-contain drop-shadow-sm"
                         />
                         <div className="space-y-2">
@@ -42,7 +42,7 @@ export default function Start() {
                         Iniciar Solicitud
                     </h2>
                     
-                    <form onSubmit={submit} className="space-y-6">
+                    <form onSubmit={submit} className="space-y-6" noValidate>
                         <div>
                             <label htmlFor="order_number" className="block text-sm font-semibold text-gray-700">
                                 Número de Pedido
@@ -55,10 +55,14 @@ export default function Start() {
                                 className="mt-2 block w-full border-gray-300 focus:border-[#05a060] focus:ring-[#05a060] rounded-lg shadow-sm"
                                 onChange={(e) => setData('order_number', e.target.value)}
                                 required
+                                aria-invalid={errors.order_number ? 'true' : 'false'}
+                                aria-describedby={errors.order_number ? 'error-order_number' : undefined}
                                 placeholder="Ej. ORD-123456"
                             />
                             {errors.order_number && (
-                                <div className="mt-2 text-sm text-red-600 font-medium">{errors.order_number}</div>
+                                <div id="error-order_number" role="alert" className="mt-2 text-sm text-red-600 font-medium">
+                                    {errors.order_number}
+                                </div>
                             )}
                         </div>
 
@@ -74,18 +78,22 @@ export default function Start() {
                                 className="mt-2 block w-full border-gray-300 focus:border-[#05a060] focus:ring-[#05a060] rounded-lg shadow-sm"
                                 onChange={(e) => setData('customer_dni', e.target.value)}
                                 required
+                                aria-invalid={errors.customer_dni ? 'true' : 'false'}
+                                aria-describedby={errors.customer_dni ? 'error-customer_dni' : undefined}
                                 placeholder="Documento de Identidad"
                             />
                             {errors.customer_dni && (
-                                <div className="mt-2 text-sm text-red-600 font-medium">{errors.customer_dni}</div>
+                                <div id="error-customer_dni" role="alert" className="mt-2 text-sm text-red-600 font-medium">
+                                    {errors.customer_dni}
+                                </div>
                             )}
                         </div>
 
                         {errors.login && (
-                            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+                            <div role="alert" aria-live="assertive" className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
                                 <div className="flex">
                                     <div className="flex-shrink-0">
-                                        <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                                        <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                                         </svg>
                                     </div>
@@ -124,6 +132,6 @@ export default function Start() {
                     Acceso Administrativo
                 </Link>
             </div>
-        </div>
+        </main>
     );
 }

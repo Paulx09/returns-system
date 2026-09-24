@@ -3,17 +3,17 @@ import { Head, Link } from '@inertiajs/react';
 
 export default function Success({ trackingCode }) {
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8">
+        <main className="min-h-screen bg-gray-50 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8">
             <Head title="Solicitud Enviada - Tai Loy" />
 
             <div className="max-w-md w-full bg-white shadow-xl rounded-2xl overflow-hidden border-t-4 border-tailoy-yellow text-center p-8">
                 <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
-                    <svg className="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                     </svg>
                 </div>
                 
-                <h2 className="text-3xl font-extrabold text-tailoy-blue mb-2">¡Solicitud Registrada!</h2>
+                <h1 className="text-3xl font-extrabold text-tailoy-blue mb-2">¡Solicitud Registrada!</h1>
                 <p className="text-gray-600 mb-6">
                     Hemos recibido tu solicitud de devolución correctamente. Un asesor revisará tu caso a la brevedad.
                 </p>
@@ -38,6 +38,6 @@ export default function Success({ trackingCode }) {
                     Volver al Inicio
                 </Link>
             </div>
-        </div>
+        </main>
     );
 }

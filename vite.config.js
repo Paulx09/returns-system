@@ -10,4 +10,21 @@ export default defineConfig({
         }),
         react(),
     ],
+    test: {
+        environment: 'jsdom',
+        pool: 'threads',
+        minThreads: 1,
+        maxThreads: 1,
+        setupFiles: './resources/js/__tests__/setup.js',
+        include: [
+            'resources/js/__tests__/**/*.test.{js,jsx}',
+            'resources/js/Pages/**/__tests__/**/*.test.{js,jsx}',
+        ],
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'html'],
+            include: ['resources/js/Pages/Returns/**/*.jsx'],
+            exclude: ['resources/js/Pages/Returns/Success.jsx'],
+        },
+    },
 });
