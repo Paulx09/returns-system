@@ -31,12 +31,21 @@ export default function Success({ trackingCode }) {
                     Guarda este código para hacer seguimiento a tu solicitud. Te hemos enviado una copia a tu correo electrónico registrado en la compra.
                 </div>
 
-                <Link
-                    href={route('returns.start')}
-                    className="w-full inline-flex justify-center py-3 px-4 border border-transparent shadow-sm text-sm font-bold rounded-md text-tailoy-blue bg-tailoy-yellow hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tailoy-yellow"
-                >
-                    Volver al Inicio
-                </Link>
+                <div className="space-y-3">
+                    <Link
+                        href={route('returns.tracking')}
+                        className="w-full inline-flex justify-center py-3 px-4 border border-transparent shadow-sm text-sm font-bold rounded-lg text-white bg-[#05a060] hover:bg-[#04854f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05a060] transition"
+                    >
+                        Ver Seguimiento de mi Solicitud
+                    </Link>
+
+                    <Link
+                        href={route('returns.start')}
+                        className="w-full inline-flex justify-center py-2.5 px-4 border border-gray-300 shadow-sm text-sm font-semibold rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition"
+                    >
+                        Volver al Inicio
+                    </Link>
+                </div>
             </div>
         </main>
     );

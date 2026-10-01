@@ -7,6 +7,7 @@ use App\Models\ExternalOrderCache;
 use App\Models\ReturnItem;
 use App\Models\ReturnReason;
 use App\Models\ReturnTicket;
+use App\Models\TicketStatusHistory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,9 +17,15 @@ use Inertia\Response;
 
 class ReturnTicketController extends Controller
 {
-    public function dashboard(Request $request): Response
+    public function dashboard(Request $request): Response|RedirectResponse
     {
         $orderId = $request->session()->get('customer_order_id');
+
+        // Si ya cuenta con un ticket activo en sesión, redirigir a la vista de seguimiento
+        if ($request->session()->get('has_active_ticket', false)) {
+            return redirect()->route('returns.tracking');
+        }
+
         $order = ExternalOrderCache::with('orderItems')->findOrFail($orderId);
         $reasons = ReturnReason::all();
 
@@ -30,6 +37,19 @@ class ReturnTicketController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $orderId = $request->session()->get('customer_order_id');
+
+        // Validar que no exista un ticket activo
+        $hasActiveTicket = ReturnTicket::where('order_id', $orderId)
+            ->where('current_status', '!=', 'closed')
+            ->exists();
+
+        if ($hasActiveTicket) {
+            $request->session()->put('has_active_ticket', true);
+            return redirect()->route('returns.tracking')
+                ->with('error', 'Ya existe una solicitud de devolución en trámite para este pedido.');
+        }
+
         $request->validate([
             'items' => 'required|array|min:1',
             'items.*.order_item_id' => 'required|uuid|exists:order_items,order_item_id',
@@ -41,8 +61,6 @@ class ReturnTicketController extends Controller
             'evidences' => 'required|array|min:1|max:5',
             'evidences.*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
-
-        $orderId = $request->session()->get('customer_order_id');
         
         DB::beginTransaction();
         try {
@@ -52,6 +70,14 @@ class ReturnTicketController extends Controller
                 'tracking_code' => 'RET-' . strtoupper(Str::random(8)),
                 'current_status' => 'received',
                 'customer_comment' => htmlspecialchars($request->input('customer_notes')), // Prevent XSS
+            ]);
+
+            TicketStatusHistory::create([
+                'ticket_id'          => $ticket->ticket_id,
+                'old_status'         => null,
+                'new_status'         => 'received',
+                'changed_by_user_id' => null,
+                'comment'            => 'Solicitud de devolución registrada en el portal.',
             ]);
 
             // 2. Add Items
@@ -81,6 +107,8 @@ class ReturnTicketController extends Controller
 
             DB::commit();
 
+            $request->session()->put('has_active_ticket', true);
+
             return redirect()->route('returns.success')->with('tracking_code', $ticket->tracking_code);
 
         } catch (\Exception $e) {
@@ -91,8 +119,42 @@ class ReturnTicketController extends Controller
 
     public function success(Request $request): Response
     {
+        $orderId = $request->session()->get('customer_order_id');
+        $trackingCode = session('tracking_code');
+
+        if (!$trackingCode && $orderId) {
+            $latestTicket = ReturnTicket::where('order_id', $orderId)->latest('created_at')->first();
+            $trackingCode = $latestTicket?->tracking_code;
+        }
+
         return Inertia::render('Returns/Success', [
-            'trackingCode' => session('tracking_code')
+            'trackingCode' => $trackingCode,
+        ]);
+    }
+
+    public function tracking(Request $request): Response|RedirectResponse
+    {
+        $orderId = $request->session()->get('customer_order_id');
+        $order = ExternalOrderCache::findOrFail($orderId);
+
+        $ticket = ReturnTicket::where('order_id', $orderId)
+            ->with([
+                'order',
+                'returnItems.orderItem',
+                'returnItems.reason',
+                'evidences',
+                'statusHistory' => fn ($q) => $q->orderBy('changed_at', 'desc'),
+            ])
+            ->latest('created_at')
+            ->first();
+
+        if (!$ticket) {
+            return redirect()->route('returns.dashboard');
+        }
+
+        return Inertia::render('Returns/Tracking', [
+            'ticket' => $ticket,
+            'order'  => $order,
         ]);
     }
 }

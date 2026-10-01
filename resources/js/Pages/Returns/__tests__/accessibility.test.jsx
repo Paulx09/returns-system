@@ -7,11 +7,13 @@ import { axe } from 'vitest-axe';
 import Start from '../Start';
 import Dashboard from '../Dashboard';
 import Success from '../Success';
+import Tracking from '../Tracking';
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
     Link: ({ children, ...props }) => <a {...props}>{children}</a>,
     useForm: vi.fn(),
+    usePage: () => ({ props: { flash: {} } }),
 }));
 
 afterEach(() => {
@@ -210,6 +212,83 @@ describe('Frontend Accessibility (WCAG 2.1 Level AA) Audit', () => {
         it('has zero accessibility violations in success confirmation state', async () => {
             const { container } = render(<Success trackingCode="DEV-2026-98765" />);
 
+            const results = await axe(container);
+            expect(results).toHaveNoViolations();
+        });
+    });
+
+    describe('Returns/Tracking Component', () => {
+        const mockTicket = {
+            ticket_id: 'ticket-1',
+            tracking_code: 'RET-ABC12345',
+            current_status: 'under_review',
+            created_at: '2026-09-25T10:00:00Z',
+            customer_comment: 'El producto llegó con falla.',
+            order: mockOrder,
+            return_items: [
+                {
+                    return_item_id: 'ret-item-1',
+                    quantity_to_return: 1,
+                    condition: 'damaged',
+                    order_item: mockOrder.order_items[0],
+                    reason: mockReasons[0],
+                },
+            ],
+            evidences: [
+                {
+                    evidence_id: 'ev-1',
+                    file_name: 'foto.jpg',
+                    file_size: 102400,
+                },
+            ],
+            status_history: [
+                {
+                    history_id: 'hist-1',
+                    new_status: 'under_review',
+                    changed_at: '2026-09-26T11:00:00Z',
+                    comment: 'En evaluación técnica.',
+                },
+                {
+                    history_id: 'hist-0',
+                    new_status: 'received',
+                    changed_at: '2026-09-25T10:00:00Z',
+                    comment: 'Solicitud registrada.',
+                },
+            ],
+        };
+
+        it('has zero accessibility violations in under_review tracking state', async () => {
+            const { container } = render(<Tracking ticket={mockTicket} order={mockOrder} />);
+            const results = await axe(container);
+            expect(results).toHaveNoViolations();
+        });
+
+        it('has zero accessibility violations in more_information_requested state', async () => {
+            const infoTicket = {
+                ...mockTicket,
+                current_status: 'more_information_requested',
+            };
+            const { container } = render(<Tracking ticket={infoTicket} order={mockOrder} />);
+            const results = await axe(container);
+            expect(results).toHaveNoViolations();
+        });
+
+        it('has zero accessibility violations in approved state', async () => {
+            const approvedTicket = {
+                ...mockTicket,
+                current_status: 'approved',
+            };
+            const { container } = render(<Tracking ticket={approvedTicket} order={mockOrder} />);
+            const results = await axe(container);
+            expect(results).toHaveNoViolations();
+        });
+
+        it('has zero accessibility violations in closed state', async () => {
+            const closedTicket = {
+                ...mockTicket,
+                current_status: 'closed',
+            };
+            const { container } = render(<Tracking ticket={closedTicket} order={mockOrder} />);
             const results = await axe(container);
             expect(results).toHaveNoViolations();
         });

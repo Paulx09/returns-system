@@ -5,11 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useForm } from '@inertiajs/react';
 import Start from '../Pages/Returns/Start';
 import Dashboard from '../Pages/Returns/Dashboard';
+import Success from '../Pages/Returns/Success';
+import Tracking from '../Pages/Returns/Tracking';
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
     Link: ({ children, ...props }) => <a {...props}>{children}</a>,
     useForm: vi.fn(),
+    usePage: () => ({ props: { flash: {} } }),
 }));
 
 afterEach(() => {
@@ -189,5 +192,93 @@ describe('Returns/Dashboard', () => {
         await user.click(screen.getByRole('checkbox', { name: /Cuaderno/ }));
 
         expect(screen.getByRole('button', { name: 'Enviando...' })).toBeDisabled();
+    });
+});
+
+describe('Returns/Success', () => {
+    it('renders tracking code and navigation link to tracking view', () => {
+        render(<Success trackingCode="RET-XYZ98765" />);
+
+        expect(screen.getByText('RET-XYZ98765')).toBeVisible();
+        expect(screen.getByRole('link', { name: 'Ver Seguimiento de mi Solicitud' })).toHaveAttribute('href', '/route/returns.tracking');
+        expect(screen.getByRole('link', { name: 'Volver al Inicio' })).toHaveAttribute('href', '/route/returns.start');
+    });
+});
+
+describe('Returns/Tracking', () => {
+    const mockTicket = {
+        ticket_id: 'ticket-1',
+        tracking_code: 'RET-ABC12345',
+        current_status: 'more_information_requested',
+        created_at: '2026-09-25T10:00:00Z',
+        customer_comment: 'El empaque vino abierto.',
+        order: order,
+        return_items: [
+            {
+                return_item_id: 'ret-item-1',
+                quantity_to_return: 2,
+                condition: 'opened',
+                order_item: order.order_items[0],
+                reason: reasons[0],
+            },
+        ],
+        evidences: [
+            {
+                evidence_id: 'ev-1',
+                file_name: 'foto_evidencia.jpg',
+                file_size: 204800,
+            },
+        ],
+        status_history: [
+            {
+                history_id: 'hist-2',
+                new_status: 'more_information_requested',
+                changed_at: '2026-09-26T14:30:00Z',
+                comment: 'Por favor adjunta foto del código de barras.',
+            },
+            {
+                history_id: 'hist-1',
+                new_status: 'received',
+                changed_at: '2026-09-25T10:00:00Z',
+                comment: 'Solicitud registrada.',
+            },
+        ],
+    };
+
+    it('renders tracking code, order number, products, and support comments', () => {
+        render(<Tracking ticket={mockTicket} order={order} />);
+
+        expect(screen.getByRole('heading', { name: 'RET-ABC12345' })).toBeVisible();
+        expect(screen.getByText('#ORD-123')).toBeVisible();
+        expect(screen.getByText('Cuaderno')).toBeVisible();
+        expect(screen.getByText('Cant: 2')).toBeVisible();
+        expect(screen.getByText('foto_evidencia.jpg')).toBeVisible();
+        expect(screen.getAllByText(/Por favor adjunta foto del código de barras/)[0]).toBeVisible();
+    });
+
+    it('renders the contextual alert when more information is requested', () => {
+        render(<Tracking ticket={mockTicket} order={order} />);
+
+        expect(screen.getByText('Se requiere información adicional')).toBeVisible();
+    });
+
+    it('renders the case closed state with action to register a new ticket', () => {
+        const closedTicket = {
+            ...mockTicket,
+            current_status: 'closed',
+            status_history: [
+                {
+                    history_id: 'hist-3',
+                    new_status: 'closed',
+                    changed_at: '2026-09-28T09:00:00Z',
+                    comment: 'Caso atendido y cerrado con reembolso.',
+                },
+            ],
+        };
+
+        render(<Tracking ticket={closedTicket} order={order} />);
+
+        expect(screen.getByText('Caso Finalizado y Cerrado')).toBeVisible();
+        expect(screen.getByRole('link', { name: 'Registrar nueva solicitud' })).toHaveAttribute('href', '/route/returns.dashboard');
     });
 });
