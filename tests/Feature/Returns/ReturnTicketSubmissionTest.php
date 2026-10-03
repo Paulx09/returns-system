@@ -53,6 +53,7 @@ class ReturnTicketSubmissionTest extends TestCase
             'order_item_id' => $this->orderItem->order_item_id,
             'reason_id' => $this->reason->reason_id,
             'quantity_to_return' => 1,
+            'condition' => 'damaged',
         ]);
         $this->assertDatabaseHas('evidences', [
             'file_name' => 'damaged-product.jpg',

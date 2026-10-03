@@ -27,6 +27,8 @@ Route::prefix('returns')->name('returns.')->group(function () {
         Route::post('/tickets', [ReturnTicketController::class, 'store'])->name('tickets.store');
         Route::get('/success', [ReturnTicketController::class, 'success'])->name('success');
         Route::get('/tracking', [ReturnTicketController::class, 'tracking'])->name('tracking');
+        Route::get('/evidences/{evidence}', [ReturnTicketController::class, 'showEvidence'])->name('evidences.show');
+        Route::post('/tickets/{ticket}/evidence', [ReturnTicketController::class, 'uploadAdditionalEvidence'])->name('tickets.evidence');
     });
 });
 

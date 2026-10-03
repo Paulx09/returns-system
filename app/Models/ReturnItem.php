@@ -21,6 +21,7 @@ class ReturnItem extends Model
         'order_item_id',
         'reason_id',
         'quantity_to_return',
+        'condition',
         'admin_comment',
     ];
 

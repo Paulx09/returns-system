@@ -237,4 +237,134 @@ class TicketTrackingAndLifecycleTest extends TestCase
             ->has('order')
         );
     }
+
+    public function test_customer_can_view_own_evidence_file(): void
+    {
+        // Arrange
+        Storage::disk('local')->put('evidences/test.jpg', 'imagen_prueba');
+
+        $ticket = ReturnTicket::create([
+            'order_id' => $this->order->order_id,
+            'tracking_code' => 'RET-FILE01',
+            'current_status' => 'under_review',
+        ]);
+
+        $evidence = Evidence::create([
+            'ticket_id' => $ticket->ticket_id,
+            'file_path' => 'evidences/test.jpg',
+            'file_name' => 'test.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1024,
+        ]);
+
+        // Act
+        $response = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+        ])->get(route('returns.evidences.show', $evidence->evidence_id));
+
+        // Assert
+        $response->assertOk();
+        $this->assertSame('image/jpeg', $response->headers->get('content-type'));
+    }
+
+    public function test_customer_cannot_view_evidence_from_another_order(): void
+    {
+        // Arrange: otra orden con su propia evidencia
+        $otherOrder = ExternalOrderCache::factory()->create([
+            'order_number' => 'ORD-OTHER-999',
+            'customer_dni' => '99887766',
+        ]);
+
+        $otherTicket = ReturnTicket::create([
+            'order_id' => $otherOrder->order_id,
+            'tracking_code' => 'RET-OTHER01',
+            'current_status' => 'under_review',
+        ]);
+
+        Storage::disk('local')->put('evidences/private.jpg', 'privado');
+
+        $otherEvidence = Evidence::create([
+            'ticket_id' => $otherTicket->ticket_id,
+            'file_path' => 'evidences/private.jpg',
+            'file_name' => 'private.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1024,
+        ]);
+
+        // Act: cliente actual intenta ver la evidencia de la otra orden
+        $response = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+        ])->get(route('returns.evidences.show', $otherEvidence->evidence_id));
+
+        // Assert: 403 Forbidden
+        $response->assertForbidden();
+    }
+
+    public function test_customer_can_upload_additional_evidence_when_status_is_more_information_requested(): void
+    {
+        // Arrange
+        $ticket = ReturnTicket::create([
+            'order_id' => $this->order->order_id,
+            'tracking_code' => 'RET-MOREINFO',
+            'current_status' => 'more_information_requested',
+        ]);
+
+        $file = UploadedFile::fake()->image('adicional.jpg');
+
+        // Act
+        $response = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+        ])->post(route('returns.tickets.evidence', $ticket->ticket_id), [
+            'evidences' => [$file],
+            'customer_notes' => 'Adjunto foto del código de barras solicitada.',
+        ]);
+
+        // Assert: redirige a tracking con éxito
+        $response->assertRedirect(route('returns.tracking'));
+        $response->assertSessionHas('success');
+
+        // Estado transicionado a under_review
+        $this->assertSame('under_review', $ticket->fresh()->current_status);
+
+        // Se guardó la nueva evidencia
+        $this->assertDatabaseHas('evidences', [
+            'ticket_id' => $ticket->ticket_id,
+            'file_name' => 'adicional.jpg',
+        ]);
+
+        // Se registró en ticket_status_history
+        $this->assertDatabaseHas('ticket_status_history', [
+            'ticket_id' => $ticket->ticket_id,
+            'old_status' => 'more_information_requested',
+            'new_status' => 'under_review',
+        ]);
+    }
+
+    public function test_customer_cannot_upload_additional_evidence_when_status_is_not_more_information_requested(): void
+    {
+        // Arrange: ticket en 'received' (no en 'more_information_requested')
+        $ticket = ReturnTicket::create([
+            'order_id' => $this->order->order_id,
+            'tracking_code' => 'RET-RECEIVED',
+            'current_status' => 'received',
+        ]);
+
+        $file = UploadedFile::fake()->image('no_permitido.jpg');
+
+        // Act
+        $response = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+        ])->post(route('returns.tickets.evidence', $ticket->ticket_id), [
+            'evidences' => [$file],
+            'customer_notes' => 'No debe permitirse',
+        ]);
+
+        // Assert: redirige a tracking con error y estado se mantiene
+        $response->assertRedirect(route('returns.tracking'));
+        $response->assertSessionHas('error');
+        $this->assertSame('received', $ticket->fresh()->current_status);
+        $this->assertDatabaseMissing('evidences', [
+            'file_name' => 'no_permitido.jpg',
+        ]);
+    }
 }

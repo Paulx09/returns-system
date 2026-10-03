@@ -30,12 +30,12 @@ const order = {
 const reasons = [{ reason_id: 'reason-1', description: 'Producto defectuoso' }];
 
 function configureForm(initialData, overrides = {}) {
-    const formState = { data: initialData, setData: vi.fn(), post: vi.fn(), processing: false, errors: {}, ...overrides };
+    const formState = { data: initialData, setData: vi.fn(), post: vi.fn(), reset: vi.fn(), processing: false, errors: {}, ...overrides };
     useForm.mockImplementation((defaults) => {
         const [data, setFormData] = React.useState(initialData ?? defaults);
         formState.setData.mockImplementation((field, value) => setFormData(current => ({ ...current, [field]: value })));
         formState.data = data;
-        return { data, setData: formState.setData, post: formState.post, processing: formState.processing, errors: formState.errors };
+        return { data, setData: formState.setData, post: formState.post, reset: formState.reset, processing: formState.processing, errors: formState.errors };
     });
     return formState;
 }
@@ -280,5 +280,65 @@ describe('Returns/Tracking', () => {
 
         expect(screen.getByText('Caso Finalizado y Cerrado')).toBeVisible();
         expect(screen.getByRole('link', { name: 'Registrar nueva solicitud' })).toHaveAttribute('href', '/route/returns.dashboard');
+    });
+
+    it('renders evidence download link pointing to evidence view route', () => {
+        render(<Tracking ticket={mockTicket} order={order} />);
+
+        const evidenceLink = screen.getByRole('link', { name: /Abrir foto_evidencia\.jpg/i });
+        expect(evidenceLink).toBeInTheDocument();
+        expect(evidenceLink).toHaveAttribute('href', '/route/returns.evidences.show');
+        expect(evidenceLink).toHaveAttribute('target', '_blank');
+        expect(evidenceLink).toHaveAttribute('rel', 'noopener noreferrer');
+    });
+
+    it('submits additional evidence form when ticket is in more_information_requested status', async () => {
+        const user = userEvent.setup();
+        const form = configureForm({ evidences: [], customer_notes: '' });
+        render(<Tracking ticket={mockTicket} order={order} />);
+
+        expect(screen.getByRole('button', { name: 'Enviar Información Solicitada' })).toBeDisabled();
+
+        await user.type(screen.getByLabelText('Comentario o Aclaración (Opcional)'), 'Adjunto foto del código de barras solicitado');
+        const file = new File(['barcode data'], 'barcode.jpg', { type: 'image/jpeg' });
+        fireEvent.change(screen.getByLabelText(/Adjuntar Fotos o Documentos/), { target: { files: [file] } });
+
+        await waitFor(() => {
+            expect(screen.getByText('barcode.jpg')).toBeVisible();
+            expect(screen.getByRole('button', { name: 'Enviar Información Solicitada' })).toBeEnabled();
+        });
+
+        await user.click(screen.getByRole('button', { name: 'Enviar Información Solicitada' }));
+
+        expect(form.post).toHaveBeenCalledWith('/route/returns.tickets.evidence', expect.any(Object));
+    });
+
+    it('allows removing an attached file before submitting additional evidence', async () => {
+        const user = userEvent.setup();
+        configureForm({ evidences: [], customer_notes: '' });
+        render(<Tracking ticket={mockTicket} order={order} />);
+
+        const file = new File(['barcode data'], 'barcode.jpg', { type: 'image/jpeg' });
+        fireEvent.change(screen.getByLabelText(/Adjuntar Fotos o Documentos/), { target: { files: [file] } });
+
+        await waitFor(() => expect(screen.getByText('barcode.jpg')).toBeVisible());
+
+        await user.click(screen.getByRole('button', { name: 'Quitar archivo barcode.jpg' }));
+
+        await waitFor(() => {
+            expect(screen.queryByText('barcode.jpg')).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Enviar Información Solicitada' })).toBeDisabled();
+        });
+    });
+
+    it('displays validation errors in the additional evidence form', () => {
+        configureForm(
+            { evidences: [], customer_notes: '' },
+            { errors: { customer_notes: 'Comentario demasiado largo.', evidences: 'Debes adjuntar al menos un archivo.' } }
+        );
+        render(<Tracking ticket={mockTicket} order={order} />);
+
+        expect(screen.getByText('Comentario demasiado largo.')).toBeVisible();
+        expect(screen.getByText('Debes adjuntar al menos un archivo.')).toBeVisible();
     });
 });

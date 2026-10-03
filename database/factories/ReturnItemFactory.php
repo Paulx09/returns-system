@@ -25,6 +25,7 @@ class ReturnItemFactory extends Factory
             'order_item_id' => OrderItem::factory(),
             'reason_id' => ReturnReason::factory(),
             'quantity_to_return' => fake()->numberBetween(1, 3),
+            'condition' => fake()->randomElement(['sealed', 'opened', 'damaged']),
             'admin_comment' => fake()->optional()->sentence(),
         ];
     }
