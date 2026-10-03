@@ -63,4 +63,23 @@ class ReturnTicket extends Model
     {
         return $this->hasMany(TicketStatusHistory::class, 'ticket_id', 'ticket_id');
     }
+
+    /**
+     * Scope a query to only include active (non-closed) tickets.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder<ReturnTicket> $query
+     * @return \Illuminate\Database\Eloquent\Builder<ReturnTicket>
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('current_status', '!=', 'closed');
+    }
+
+    /**
+     * Check if the ticket is active (not closed).
+     */
+    public function isActive(): bool
+    {
+        return $this->current_status !== 'closed';
+    }
 }

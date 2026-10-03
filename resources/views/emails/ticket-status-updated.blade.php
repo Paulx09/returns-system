@@ -138,7 +138,13 @@
                 </div>
             @endif
 
-            <p>Si tienes alguna duda sobre tu caso, puedes revisar el estado de tu ticket en nuestro portal con tu número de pedido y DNI.</p>
+            <p>Si tienes alguna duda sobre tu caso, puedes revisar el estado y la línea de tiempo de tu ticket en nuestro portal con tu número de pedido y DNI.</p>
+
+            <div style="text-align: center; margin: 25px 0;">
+                <a href="{{ route('returns.start') }}" style="background-color: #05a060; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
+                    Consultar Seguimiento en el Portal
+                </a>
+            </div>
         </div>
 
         <div class="footer">

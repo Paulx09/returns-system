@@ -46,6 +46,7 @@ class AdminTicketController extends Controller
         $ticket->load([
             'order',
             'returnItems.reason',
+            'returnItems.orderItem',
             'evidences',
             'statusHistory' => fn ($q) => $q->orderBy('changed_at', 'desc'),
             'statusHistory.changedBy',

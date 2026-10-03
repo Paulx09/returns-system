@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ExternalOrderCache extends Model
 {
@@ -33,5 +34,25 @@ class ExternalOrderCache extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class, 'order_id', 'order_id');
+    }
+
+    /** @return HasMany<ReturnTicket, $this> */
+    public function returnTickets(): HasMany
+    {
+        return $this->hasMany(ReturnTicket::class, 'order_id', 'order_id');
+    }
+
+    /** @return HasOne<ReturnTicket, $this> */
+    public function activeReturnTicket(): HasOne
+    {
+        return $this->hasOne(ReturnTicket::class, 'order_id', 'order_id')
+            ->where('current_status', '!=', 'closed');
+    }
+
+    /** @return HasOne<ReturnTicket, $this> */
+    public function latestReturnTicket(): HasOne
+    {
+        return $this->hasOne(ReturnTicket::class, 'order_id', 'order_id')
+            ->latest('created_at');
     }
 }

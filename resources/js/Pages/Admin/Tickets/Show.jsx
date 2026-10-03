@@ -13,7 +13,17 @@ const CONDITION_LABELS = {
     sealed:  'Sellado / Intacto',
     opened:  'Abierto / Usado',
     damaged: 'Dañado de fábrica',
+    sellado: 'Sellado / Intacto',
+    abierto: 'Abierto / Usado',
+    dañado:  'Dañado de fábrica',
+    danado:  'Dañado de fábrica',
 };
+
+function getConditionLabel(condition) {
+    if (!condition) return 'No especificada';
+    const key = String(condition).toLowerCase().trim();
+    return CONDITION_LABELS[key] ?? CONDITION_LABELS[condition] ?? condition;
+}
 
 function StatusBadge({ status }) {
     const config = STATUS_CONFIG[status] ?? { label: status, bg: 'bg-gray-100', text: 'text-gray-600' };
@@ -150,7 +160,7 @@ export default function Show({ ticket, statuses }) {
                                                     <p className="text-xs text-gray-500 mt-0.5">
                                                         Motivo: <span className="font-medium">{item.reason?.description ?? '—'}</span>
                                                         {' · '}
-                                                        Condición: <span className="font-medium">{CONDITION_LABELS[item.condition] ?? item.condition}</span>
+                                                        Condición: <span className="font-medium">{getConditionLabel(item.condition)}</span>
                                                     </p>
                                                 </div>
                                                 <span className="text-sm font-semibold text-gray-700 ml-4">

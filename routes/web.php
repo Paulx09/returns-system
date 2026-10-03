@@ -16,6 +16,9 @@ Route::prefix('returns')->name('returns.')->group(function () {
     Route::post('/login', [CustomerAuthController::class, 'store'])
         ->middleware('throttle:5,1')
         ->name('login');
+    Route::post('/track-by-code', [CustomerAuthController::class, 'trackByCode'])
+        ->middleware('throttle:5,1')
+        ->name('track-by-code');
     Route::post('/logout', [CustomerAuthController::class, 'destroy'])->name('logout');
 
     // Rutas protegidas
@@ -23,6 +26,9 @@ Route::prefix('returns')->name('returns.')->group(function () {
         Route::get('/dashboard', [ReturnTicketController::class, 'dashboard'])->name('dashboard');
         Route::post('/tickets', [ReturnTicketController::class, 'store'])->name('tickets.store');
         Route::get('/success', [ReturnTicketController::class, 'success'])->name('success');
+        Route::get('/tracking', [ReturnTicketController::class, 'tracking'])->name('tracking');
+        Route::get('/evidences/{evidence}', [ReturnTicketController::class, 'showEvidence'])->name('evidences.show');
+        Route::post('/tickets/{ticket}/evidence', [ReturnTicketController::class, 'uploadAdditionalEvidence'])->name('tickets.evidence');
     });
 });
 
