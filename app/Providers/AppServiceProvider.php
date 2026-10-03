@@ -13,7 +13,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        if ($this->app->environment('local')) {
+            $this->app->singleton(\Resend\Contracts\Client::class, static function (): \Resend\Client {
+                $apiKey = config('resend.api_key') ?? config('services.resend.key');
+
+                if (! is_string($apiKey)) {
+                    throw \Resend\Laravel\Exceptions\ApiKeyIsMissing::create();
+                }
+
+                $baseUri = \Resend\ValueObjects\Transporter\BaseUri::from(getenv('RESEND_BASE_URL') ?: 'api.resend.com');
+                $headers = \Resend\ValueObjects\Transporter\Headers::withAuthorization(\Resend\ValueObjects\ApiKey::from($apiKey));
+                $client = new \GuzzleHttp\Client(['verify' => false]);
+                $transporter = new \Resend\Transporters\HttpTransporter($client, $baseUri, $headers);
+
+                return new \Resend\Client($transporter);
+            });
+        }
     }
 
     /**

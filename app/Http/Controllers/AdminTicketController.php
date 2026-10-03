@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\TicketStatusUpdated;
 use App\Models\Evidence;
 use App\Models\ReturnTicket;
 use App\Models\TicketStatusHistory;
@@ -96,6 +97,8 @@ class AdminTicketController extends Controller
                 'comment'            => $validated['comment'] ?? null,
             ]);
         });
+
+        TicketStatusUpdated::dispatch($ticket, $validated['comment'] ?? null);
 
         return redirect()
             ->route('admin.tickets.show', $ticket->ticket_id)
