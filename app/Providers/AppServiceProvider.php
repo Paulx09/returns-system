@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
@@ -40,6 +41,10 @@ class AppServiceProvider extends ServiceProvider
 
         if ($this->app->environment('production') || env('APP_ENV') === 'production') {
             URL::forceScheme('https');
+        }
+
+        if ($recipient = config('mail.always_to')) {
+            Mail::alwaysTo($recipient);
         }
     }
 }

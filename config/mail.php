@@ -115,4 +115,17 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Global Always-To Recipient
+    |--------------------------------------------------------------------------
+    |
+    | When configured, all outgoing emails sent by the application will be
+    | redirected to this specific address. Useful for staging, testing or demos.
+    |
+    */
+
+    'always_to' => env('MAIL_ALWAYS_TO', env('MAIL_TEST_RECIPIENT')),
+
 ];
+

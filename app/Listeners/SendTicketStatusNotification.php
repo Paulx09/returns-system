@@ -23,10 +23,6 @@ class SendTicketStatusNotification implements ShouldQueue
 
         $customerEmail = $ticket->order->customer_email ?? null;
 
-        if (app()->environment('local') && env('MAIL_TEST_RECIPIENT')) {
-            $customerEmail = env('MAIL_TEST_RECIPIENT');
-        }
-
         if (!$customerEmail) {
             Log::warning("No email found for customer in ticket {$ticket->ticket_id}. Notification skipped.");
             return;
