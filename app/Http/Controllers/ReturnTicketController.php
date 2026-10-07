@@ -10,6 +10,7 @@ use App\Models\ReturnTicket;
 use App\Models\TicketStatusHistory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -94,17 +95,23 @@ class ReturnTicketController extends Controller
             }
 
             // 3. Upload Evidences
+            $storedPaths = [];
             if ($request->hasFile('evidences')) {
-                foreach ($request->file('evidences') as $file) {
-                    $path = $file->store('evidences', 'local'); // Saves to storage/app/evidences
+                /** @var array<UploadedFile> $files */
+                $files = $request->file('evidences');
+                foreach ($files as $file) {
+                    $path = $file->store('evidences', 'local');
+                    if (is_string($path)) {
+                        $storedPaths[] = $path;
 
-                    Evidence::create([
-                        'ticket_id' => $ticket->ticket_id,
-                        'file_path' => $path,
-                        'file_name' => $file->getClientOriginalName(),
-                        'mime_type' => $file->getClientMimeType(),
-                        'file_size' => $file->getSize(),
-                    ]);
+                        Evidence::create([
+                            'ticket_id' => $ticket->ticket_id,
+                            'file_path' => $path,
+                            'file_name' => $file->getClientOriginalName(),
+                            'mime_type' => $file->getClientMimeType(),
+                            'file_size' => $file->getSize(),
+                        ]);
+                    }
                 }
             }
 
@@ -116,6 +123,9 @@ class ReturnTicketController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            foreach ($storedPaths as $path) {
+                Storage::disk('local')->delete($path);
+            }
             throw $e;
         }
     }
@@ -158,7 +168,7 @@ class ReturnTicketController extends Controller
         return Inertia::render('Returns/Tracking', [
             'ticket' => $ticket,
             'order'  => $order,
-        ]);
+        ]); 
     }
 
     /**
@@ -169,7 +179,10 @@ class ReturnTicketController extends Controller
         $orderId = $request->session()->get('customer_order_id');
         $evidence->loadMissing('ticket');
 
-        if (!$evidence->ticket || $evidence->ticket->order_id !== $orderId) {
+        /** @var ReturnTicket|null $ticket */
+        $ticket = $evidence->ticket;
+
+        if (!$ticket || $ticket->order_id !== $orderId) {
             abort(403, 'No tienes autorización para acceder a esta evidencia.');
         }
 
@@ -208,18 +221,24 @@ class ReturnTicketController extends Controller
         ]);
 
         DB::beginTransaction();
+        $storedPaths = [];
         try {
             // Guardar nuevas evidencias
-            foreach ($request->file('evidences') as $file) {
+            /** @var array<UploadedFile> $files */
+            $files = $request->file('evidences');
+            foreach ($files as $file) {
                 $path = $file->store('evidences', 'local');
+                if (is_string($path)) {
+                    $storedPaths[] = $path;
 
-                Evidence::create([
-                    'ticket_id' => $ticket->ticket_id,
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'mime_type' => $file->getClientMimeType(),
-                    'file_size' => $file->getSize(),
-                ]);
+                    Evidence::create([
+                        'ticket_id' => $ticket->ticket_id,
+                        'file_path' => $path,
+                        'file_name' => $file->getClientOriginalName(),
+                        'mime_type' => $file->getClientMimeType(),
+                        'file_size' => $file->getSize(),
+                    ]);
+                }
             }
 
             // Transicionar estado a under_review
@@ -246,6 +265,9 @@ class ReturnTicketController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            foreach ($storedPaths as $path) {
+                Storage::disk('local')->delete($path);
+            }
             throw $e;
         }
     }
