@@ -167,9 +167,10 @@ class ReturnTicketController extends Controller
     public function showEvidence(Request $request, Evidence $evidence): BinaryFileResponse
     {
         $orderId = $request->session()->get('customer_order_id');
-        $evidence->loadMissing('ticket');
+        /** @var ReturnTicket|null $ticket */
+        $ticket = $evidence->ticket;
 
-        if (!$evidence->ticket || $evidence->ticket->order_id !== $orderId) {
+        if (!$ticket || $ticket->order_id !== $orderId) {
             abort(403, 'No tienes autorización para acceder a esta evidencia.');
         }
 
