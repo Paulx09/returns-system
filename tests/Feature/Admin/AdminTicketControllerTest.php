@@ -112,6 +112,8 @@ class AdminTicketControllerTest extends TestCase
 
     public function test_support_cannot_close_ticket(): void
     {
+        $this->ticket->update(['current_status' => 'approved']);
+
         $response = $this->actingAs($this->support)
             ->patch("/admin/tickets/{$this->ticket->ticket_id}/status", [
                 'new_status' => 'closed',
@@ -123,7 +125,7 @@ class AdminTicketControllerTest extends TestCase
         // El estado NO cambió
         $this->assertDatabaseHas('return_tickets', [
             'ticket_id'      => $this->ticket->ticket_id,
-            'current_status' => 'received',
+            'current_status' => 'approved',
         ]);
 
         // No se registró historial
@@ -151,6 +153,8 @@ class AdminTicketControllerTest extends TestCase
 
     public function test_more_info_status_requires_comment(): void
     {
+        $this->ticket->update(['current_status' => 'under_review']);
+
         $response = $this->actingAs($this->admin)
             ->patch("/admin/tickets/{$this->ticket->ticket_id}/status", [
                 'new_status' => 'more_information_requested',
@@ -158,6 +162,12 @@ class AdminTicketControllerTest extends TestCase
             ]);
 
         $response->assertSessionHasErrors(['comment']);
+
+        // El estado NO cambió
+        $this->assertDatabaseHas('return_tickets', [
+            'ticket_id'      => $this->ticket->ticket_id,
+            'current_status' => 'under_review',
+        ]);
     }
 
     // ── Scenario 6: Support SÍ puede acceder al panel (solo no puede cerrar) ──
@@ -174,6 +184,8 @@ class AdminTicketControllerTest extends TestCase
 
     public function test_admin_can_close_ticket(): void
     {
+        $this->ticket->update(['current_status' => 'approved']);
+
         $response = $this->actingAs($this->admin)
             ->patch("/admin/tickets/{$this->ticket->ticket_id}/status", [
                 'new_status' => 'closed',

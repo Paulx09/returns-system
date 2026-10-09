@@ -177,8 +177,6 @@ class ReturnTicketController extends Controller
     public function showEvidence(Request $request, Evidence $evidence): BinaryFileResponse
     {
         $orderId = $request->session()->get('customer_order_id');
-        $evidence->loadMissing('ticket');
-
         /** @var ReturnTicket|null $ticket */
         $ticket = $evidence->ticket;
 

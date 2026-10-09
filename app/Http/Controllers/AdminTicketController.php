@@ -66,7 +66,15 @@ class AdminTicketController extends Controller
     public function updateStatus(Request $request, ReturnTicket $ticket): RedirectResponse
     {
         $validated = $request->validate([
-            'new_status' => ['required', Rule::in(ReturnTicket::STATUSES)],
+            'new_status' => [
+                'required',
+                Rule::in(ReturnTicket::STATUSES),
+                function (string $attribute, mixed $value, \Closure $fail) use ($ticket): void {
+                    if (is_string($value) && !$ticket->canTransitionTo($value)) {
+                        $fail("La transición de estado de '{$ticket->current_status}' a '{$value}' no está permitida por las reglas del dominio.");
+                    }
+                },
+            ],
             'comment'    => [
                 Rule::requiredIf(
                     in_array($request->new_status, ['rejected', 'more_information_requested'])

@@ -73,13 +73,14 @@ class PathCoverageTest extends TestCase
     #[DataProvider('successfulTransitionProvider')]
     public function test_allowed_transition_updates_ticket_and_records_history(
         string $role,
+        string $initialStatus,
         string $newStatus,
         ?string $comment,
     ): void {
         // Arrange
         /** @var User $user */
         $user = User::factory()->create(['role' => $role]);
-        $ticket = $this->createTicket();
+        $ticket = $this->createTicket($initialStatus);
 
         // Act
         $response = $this->actingAs($user)->patch($this->statusUrl($ticket), [
@@ -92,32 +93,32 @@ class PathCoverageTest extends TestCase
         $this->assertSame($newStatus, $ticket->fresh()->current_status);
         $this->assertDatabaseHas('ticket_status_history', [
             'ticket_id' => $ticket->ticket_id,
-            'old_status' => 'received',
+            'old_status' => $initialStatus,
             'new_status' => $newStatus,
             'comment' => $comment,
         ]);
     }
 
     /**
-     * @return array<string, array{string, string, ?string}>
+     * @return array<string, array{string, string, string, ?string}>
      */
     public static function successfulTransitionProvider(): array
     {
         return [
-            'support begins inspection' => ['support', 'under_review', null],
-            'admin approves inspected item' => ['admin', 'approved', null],
-            'admin rejects failed inspection' => ['admin', 'rejected', 'Producto no apto.'],
-            'admin requests more information' => ['admin', 'more_information_requested', 'Falta evidencia.'],
+            'support begins inspection' => ['support', 'received', 'under_review', null],
+            'admin approves inspected item' => ['admin', 'under_review', 'approved', null],
+            'admin rejects failed inspection' => ['admin', 'under_review', 'rejected', 'Producto no apto.'],
+            'admin requests more information' => ['admin', 'under_review', 'more_information_requested', 'Falta evidencia.'],
         ];
     }
 
     #[DataProvider('commentRequiredStatusProvider')]
-    public function test_comment_required_guard_keeps_ticket_unchanged(string $newStatus): void
+    public function test_comment_required_guard_keeps_ticket_unchanged(string $initialStatus, string $newStatus): void
     {
         // Arrange
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
-        $ticket = $this->createTicket();
+        $ticket = $this->createTicket($initialStatus);
 
         // Act
         $response = $this->actingAs($admin)->patch($this->statusUrl($ticket), [
@@ -126,18 +127,18 @@ class PathCoverageTest extends TestCase
 
         // Assert
         $response->assertSessionHasErrors(['comment']);
-        $this->assertSame('received', $ticket->fresh()->current_status);
+        $this->assertSame($initialStatus, $ticket->fresh()->current_status);
         $this->assertDatabaseCount('ticket_status_history', 0);
     }
 
     /**
-     * @return array<string, array{string}>
+     * @return array<string, array{string, string}>
      */
     public static function commentRequiredStatusProvider(): array
     {
         return [
-            'rejected' => ['rejected'],
-            'more information requested' => ['more_information_requested'],
+            'rejected' => ['received', 'rejected'],
+            'more information requested' => ['under_review', 'more_information_requested'],
         ];
     }
 
@@ -146,7 +147,7 @@ class PathCoverageTest extends TestCase
         // Arrange
         /** @var User $support */
         $support = User::factory()->create(['role' => 'support']);
-        $ticket = $this->createTicket();
+        $ticket = $this->createTicket('approved');
 
         // Act
         $response = $this->actingAs($support)->patch($this->statusUrl($ticket), [
@@ -156,7 +157,7 @@ class PathCoverageTest extends TestCase
 
         // Assert
         $response->assertForbidden();
-        $this->assertSame('received', $ticket->fresh()->current_status);
+        $this->assertSame('approved', $ticket->fresh()->current_status);
         $this->assertDatabaseCount('ticket_status_history', 0);
     }
 
@@ -165,7 +166,7 @@ class PathCoverageTest extends TestCase
         // Arrange
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
-        $ticket = $this->createTicket();
+        $ticket = $this->createTicket('approved');
 
         // Act
         $response = $this->actingAs($admin)->patch($this->statusUrl($ticket), [
@@ -178,6 +179,7 @@ class PathCoverageTest extends TestCase
         $this->assertSame('closed', $ticket->fresh()->current_status);
         $this->assertDatabaseHas('ticket_status_history', [
             'ticket_id' => $ticket->ticket_id,
+            'old_status' => 'approved',
             'new_status' => 'closed',
             'comment' => 'Caso resuelto.',
         ]);
@@ -201,13 +203,13 @@ class PathCoverageTest extends TestCase
         $this->assertDatabaseCount('ticket_status_history', 0);
     }
 
-    private function createTicket(): ReturnTicket
+    private function createTicket(string $status = 'received'): ReturnTicket
     {
         $order = ExternalOrderCache::factory()->create();
 
         return ReturnTicket::factory()->create([
             'order_id' => $order->order_id,
-            'current_status' => 'received',
+            'current_status' => $status,
         ]);
     }
 

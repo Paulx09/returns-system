@@ -26,6 +26,23 @@ class ReturnTicket extends Model
         'closed',
     ];
 
+    /**
+     * @var array<string, list<string>>
+     */
+    public const ALLOWED_TRANSITIONS = [
+        'received'                   => ['under_review', 'rejected'],
+        'under_review'               => ['more_information_requested', 'approved', 'rejected'],
+        'more_information_requested' => ['under_review', 'closed'],
+        'approved'                   => ['closed'],
+        'rejected'                   => [],
+        'closed'                     => [],
+    ];
+
+    public function canTransitionTo(string $newStatus): bool
+    {
+        return in_array($newStatus, self::ALLOWED_TRANSITIONS[$this->current_status], true);
+    }
+
     protected $fillable = [
         'tracking_code',
         'order_id',
