@@ -1,0 +1,1349 @@
+openapi: 3.1.0
+info:
+  title: Tai Loy Returns Management API
+  description: |
+    Canonical HTTP API contract for the Tai Loy Product Returns and Warranty Processing System.
+    
+    This specification establishes the interface contracts for order validation, return ticket initiation,
+    multipart digital evidence submission, public ticket tracking, state-governed workflow transitions,
+    and administrative review.
+  version: 1.0.0
+  contact:
+    name: Tai Loy API Architecture Team
+    email: api-architecture@tailoy.com.pe
+
+servers:
+  - url: http://localhost:8000
+    description: Local Development Environment
+  - url: https://staging-returns.tailoy.com.pe
+    description: Staging / Quality Assurance Environment
+
+tags:
+  - name: Orders
+    description: Operations related to sales order verification, return eligibility windows, and customer access.
+  - name: Return Tickets
+    description: Lifecycle operations for customer return tickets, including submission, workflow transitions, tracking, and query filters.
+  - name: Evidences
+    description: Operations for uploading, inspecting, and streaming documentary and photographic evidence files.
+
+paths:
+  /returns/start:
+    post:
+      tags:
+        - Orders
+      summary: Verify order return eligibility and initialize customer session
+      description: |
+        Validates the existence of a sales order using the order number and customer identity document (DNI).
+        
+        **Business Behavior:**
+        - Verifies that the order exists in the verified order catalog.
+        - Evaluates if an active return ticket (`current_status` other than `closed`) already exists for this order.
+        - If no active ticket exists, enforces the return policy window (maximum 7 calendar days from order purchase date).
+        - Establishes a verified customer session upon success.
+      operationId: lookupOrderEligibility
+      security:
+        - SessionCookieAuth: []
+        - CsrfHeaderAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderLookupPayload'
+            examples:
+              eligibleOrder:
+                summary: Order eligible within standard warranty period
+                value:
+                  order_number: "ORD-2026-10492"
+                  customer_dni: "44556677"
+              activeTicketOrder:
+                summary: Order with an in-progress ticket
+                value:
+                  order_number: "ORD-TRACK-100"
+                  customer_dni: "44556677"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderLookupPayload'
+      responses:
+        '200':
+          description: Order verified successfully and customer session established.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: "session_token=...; Path=/; HttpOnly; SameSite=Lax"
+              description: Session identifier cookie issued to the client.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderLookupResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /returns/login:
+    post:
+      tags:
+        - Orders
+      summary: Customer order authentication endpoint
+      description: Direct authentication endpoint for customer order verification. Mirrors the contract and behavior of `/returns/start`.
+      operationId: authenticateCustomerOrder
+      security:
+        - SessionCookieAuth: []
+        - CsrfHeaderAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderLookupPayload'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderLookupPayload'
+      responses:
+        '200':
+          description: Session established successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderLookupResponse'
+        '302':
+          description: Client redirect to the return submission dashboard or tracking view.
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /returns/track-by-code:
+    post:
+      tags:
+        - Return Tickets
+      summary: Direct ticket tracking access by tracking code and customer identity
+      description: |
+        Authenticates and routes a customer directly to ticket tracking using a public tracking code and customer DNI.
+      operationId: accessTicketByTrackingCode
+      security:
+        - SessionCookieAuth: []
+        - CsrfHeaderAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackByCodePayload'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrackByCodePayload'
+      responses:
+        '200':
+          description: Ticket credentials validated and tracking access granted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderLookupResponse'
+        '302':
+          description: Client redirect to the ticket tracking view.
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /returns/tickets:
+    post:
+      tags:
+        - Return Tickets
+      summary: Create a new return ticket with items and multipart evidence files
+      description: |
+        Creates a new return ticket in `received` status containing specified order items, return reasons,
+        item physical conditions, and binary evidence attachments.
+        
+        **Business Constraints:**
+        - Requires an active, authenticated customer order session.
+        - Idempotency / Duplicate Prevention: An order cannot submit a new ticket if an active (non-closed) ticket already exists.
+        - Evidence Quotas: Minimum 1 file, maximum 5 files.
+        - Evidence Constraints: Allowed MIME types are `image/jpeg`, `image/png`, and `application/pdf`. Maximum size per file is 5120 KB (5 MB).
+        - Initial status is always `received`, with an automated audit log entry.
+      operationId: submitReturnTicket
+      security:
+        - SessionCookieAuth: []
+        - CsrfHeaderAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateTicketPayload'
+            encoding:
+              evidences:
+                contentType: image/jpeg, image/png, application/pdf
+      responses:
+        '201':
+          description: Return ticket created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketCreatedResponse'
+        '302':
+          description: Client redirect to the success view with tracking code.
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          description: Conflict. An active return ticket is already in progress for this order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /returns/tracking/{tracking_code}:
+    get:
+      tags:
+        - Return Tickets
+      summary: Retrieve public return ticket tracking details by code
+      description: |
+        Retrieves the public tracking status, return items, attached evidence metadata,
+        and chronological status history timeline for a ticket identified by its tracking code.
+      operationId: getTicketTrackingByCode
+      parameters:
+        - name: tracking_code
+          in: path
+          required: true
+          description: Canonical tracking code format `RET-XXXXXXXX` (e.g., `RET-4D8B9A1C`).
+          schema:
+            type: string
+            pattern: '^RET-[A-Z0-9]{8}$'
+            example: "RET-4D8B9A1C"
+      responses:
+        '200':
+          description: Tracking timeline and ticket information retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketTrackingResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /returns/tracking:
+    get:
+      tags:
+        - Return Tickets
+      summary: Retrieve active return ticket for the current customer session
+      description: |
+        Retrieves the return ticket associated with the authenticated customer's active session.
+      operationId: getActiveSessionTicketTracking
+      security:
+        - SessionCookieAuth: []
+      responses:
+        '200':
+          description: Ticket tracking details for current session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketTrackingResponse'
+        '302':
+          description: Client redirect to the dashboard if no active ticket exists.
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /returns/tickets/{ticket_id}/evidences:
+    post:
+      tags:
+        - Evidences
+      summary: Upload supplementary evidence for a ticket requesting additional information
+      description: |
+        Allows the customer to attach 1 to 5 additional files when the ticket is in the `more_information_requested` state.
+        
+        **Workflow Execution:**
+        - Verifies that the ticket belongs to the customer's authenticated order.
+        - Verifies that the ticket's current status is strictly `more_information_requested`.
+        - Automatically transitions ticket status to `under_review`.
+        - Automatically appends a new chronological status history audit record.
+      operationId: submitAdditionalEvidences
+      security:
+        - SessionCookieAuth: []
+        - CsrfHeaderAuth: []
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          description: Unique UUID identifier of the return ticket.
+          schema:
+            type: string
+            format: uuid
+            example: "9d36a8e1-5b72-4f39-8b9a-10f8d02c8901"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdditionalEvidencePayload'
+            encoding:
+              evidences:
+                contentType: image/jpeg, image/png, application/pdf
+      responses:
+        '200':
+          description: Additional evidence uploaded and ticket transitioned to under_review.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceUploadResponse'
+        '302':
+          description: Client redirect to the tracking view.
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /returns/tickets/{ticket_id}/evidence:
+    post:
+      tags:
+        - Evidences
+      summary: Supplementary evidence upload endpoint alias
+      description: Singular path alias for supplementary evidence submission.
+      operationId: submitAdditionalEvidenceAlias
+      security:
+        - SessionCookieAuth: []
+        - CsrfHeaderAuth: []
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        $ref: '#/paths/~1returns~1tickets~1{ticket_id}~1evidences/post/requestBody'
+      responses:
+        '200':
+          $ref: '#/paths/~1returns~1tickets~1{ticket_id}~1evidences/post/responses/200'
+        '302':
+          $ref: '#/paths/~1returns~1tickets~1{ticket_id}~1evidences/post/responses/302'
+        '401':
+          $ref: '#/paths/~1returns~1tickets~1{ticket_id}~1evidences/post/responses/401'
+        '403':
+          $ref: '#/paths/~1returns~1tickets~1{ticket_id}~1evidences/post/responses/403'
+        '422':
+          $ref: '#/paths/~1returns~1tickets~1{ticket_id}~1evidences/post/responses/422'
+
+  /returns/evidences/{evidence_id}:
+    get:
+      tags:
+        - Evidences
+      summary: Stream binary evidence file for authenticated customer
+      description: |
+        Streams the binary evidence file in inline mode.
+        Verifies that the evidence belongs to the ticket associated with the authenticated customer's session.
+      operationId: getCustomerEvidenceFile
+      security:
+        - SessionCookieAuth: []
+      parameters:
+        - name: evidence_id
+          in: path
+          required: true
+          description: Unique UUID identifier of the evidence record.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Binary file stream delivered inline.
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: "image/jpeg"
+            Content-Disposition:
+              schema:
+                type: string
+                example: 'inline; filename="evidence_sample.jpg"'
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/tickets:
+    get:
+      tags:
+        - Return Tickets
+      summary: List and filter return tickets with pagination for administrative review
+      description: |
+        Retrieves a paginated list of return tickets for administrative operators.
+        Supports filtering by ticket status and creation date range.
+        Requires authenticated operator session with role `admin` or `support`.
+      operationId: listAdminTickets
+      security:
+        - SessionCookieAuth: []
+        - CsrfHeaderAuth: []
+        - BearerTokenAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter tickets by specific status.
+          schema:
+            $ref: '#/components/schemas/TicketStatus'
+        - name: date_from
+          in: query
+          required: false
+          description: Inclusive start date filter in format YYYY-MM-DD.
+          schema:
+            type: string
+            format: date
+            example: "2026-10-01"
+        - name: date_to
+          in: query
+          required: false
+          description: Inclusive end date filter in format YYYY-MM-DD.
+          schema:
+            type: string
+            format: date
+            example: "2026-10-09"
+        - name: page
+          in: query
+          required: false
+          description: Page index for pagination (15 items per page).
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+      responses:
+        '200':
+          description: Paginated collection of return tickets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTicketCollection'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /admin/tickets/{ticket_id}:
+    get:
+      tags:
+        - Return Tickets
+      summary: Retrieve full ticket inspection detail for administrative review
+      description: |
+        Retrieves the comprehensive audit and inspection view of a return ticket,
+        including order context, return items, reason codes, evidence file metadata,
+        and full status transition history with user attribution.
+      operationId: getAdminTicketDetail
+      security:
+        - SessionCookieAuth: []
+        - CsrfHeaderAuth: []
+        - BearerTokenAuth: []
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          description: Unique UUID identifier of the return ticket.
+          schema:
+            type: string
+            format: uuid
+            example: "9d36a8e1-5b72-4f39-8b9a-10f8d02c8901"
+      responses:
+        '200':
+          description: Full ticket details for evaluation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTicketDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /admin/tickets/{ticket_id}/status:
+    post:
+      tags:
+        - Return Tickets
+      summary: Transition ticket status governed by workflow matrix and role permissions
+      description: |
+        Executes a status transition on the specified return ticket.
+        
+        **Business Domain Rules:**
+        1. **Allowed Transition Matrix:**
+           - `received` -> `under_review`, `rejected`
+           - `under_review` -> `more_information_requested`, `approved`, `rejected`
+           - `more_information_requested` -> `under_review`, `closed`
+           - `approved` -> `closed`
+           - `rejected` -> (Terminal status)
+           - `closed` -> (Terminal status)
+        2. **Role Authorization Matrix:**
+           - Only users with role `admin` may execute a transition to `closed`. Users with role `support` are rejected with `403 Forbidden`.
+           - Both `admin` and `support` can execute all intermediate review transitions (`under_review`, `approved`, `rejected`, `more_information_requested`).
+        3. **Conditional Comment Requirement:**
+           - The `comment` field is strictly mandatory when transitioning to `rejected` or `more_information_requested`.
+           - The `comment` field is optional when transitioning to `under_review`, `approved`, or `closed`.
+        4. **Auditing and Notification:**
+           - An atomic audit log entry is recorded in the status history tracking old status, new status, timestamp, operator identity, and comment.
+           - An asynchronous status change notification is triggered to the customer's contact email.
+      operationId: updateTicketStatusPost
+      security:
+        - SessionCookieAuth: []
+        - CsrfHeaderAuth: []
+        - BearerTokenAuth: []
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTicketStatusPayload'
+            examples:
+              approveTicket:
+                summary: Approve inspected item
+                value:
+                  new_status: "approved"
+                  comment: "Product verified in factory-sealed condition."
+              rejectWithMandatoryComment:
+                summary: Reject ticket with required explanation
+                value:
+                  new_status: "rejected"
+                  comment: "Damage is attributable to improper handling rather than manufacturing defect."
+              requestMoreInformation:
+                summary: Request additional evidence from customer
+                value:
+                  new_status: "more_information_requested"
+                  comment: "Please provide a clear photograph of the product serial number sticker."
+              closeTicketByAdmin:
+                summary: Close ticket definitively (Admin only)
+                value:
+                  new_status: "closed"
+                  comment: "Credit note issued and store resolution finalized."
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UpdateTicketStatusPayload'
+      responses:
+        '200':
+          description: Status transition successfully applied and audit record committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusUpdateSuccessResponse'
+        '302':
+          description: Client redirect to the ticket detail view.
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          description: Forbidden. Support role attempted to close a ticket or unauthorized role.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardError'
+              examples:
+                supportCannotClose:
+                  value:
+                    message: "Solo administradores pueden cerrar tickets."
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    patch:
+      tags:
+        - Return Tickets
+      summary: Transition ticket status (Semantic PATCH method)
+      description: RESTful PATCH operation executing the same domain transition rules as POST `/admin/tickets/{ticket_id}/status`.
+      operationId: updateTicketStatusPatch
+      security:
+        - SessionCookieAuth: []
+        - CsrfHeaderAuth: []
+        - BearerTokenAuth: []
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        $ref: '#/paths/~1admin~1tickets~1{ticket_id}~1status/post/requestBody'
+      responses:
+        '200':
+          $ref: '#/paths/~1admin~1tickets~1{ticket_id}~1status/post/responses/200'
+        '302':
+          $ref: '#/paths/~1admin~1tickets~1{ticket_id}~1status/post/responses/302'
+        '401':
+          $ref: '#/paths/~1admin~1tickets~1{ticket_id}~1status/post/responses/401'
+        '403':
+          $ref: '#/paths/~1admin~1tickets~1{ticket_id}~1status/post/responses/403'
+        '404':
+          $ref: '#/paths/~1admin~1tickets~1{ticket_id}~1status/post/responses/404'
+        '422':
+          $ref: '#/paths/~1admin~1tickets~1{ticket_id}~1status/post/responses/422'
+
+  /admin/evidences/{evidence_id}:
+    get:
+      tags:
+        - Evidences
+      summary: Stream binary evidence file for administrative operator
+      description: |
+        Streams the binary evidence file in inline mode.
+        Authorized for users with administrative roles (`admin` or `support`).
+      operationId: getAdminEvidenceFile
+      security:
+        - SessionCookieAuth: []
+        - BearerTokenAuth: []
+      parameters:
+        - name: evidence_id
+          in: path
+          required: true
+          description: Unique UUID identifier of the evidence file.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Binary file stream delivered inline.
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: "image/jpeg"
+            Content-Disposition:
+              schema:
+                type: string
+                example: 'inline; filename="evidence_sample.jpg"'
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+components:
+  securitySchemes:
+    SessionCookieAuth:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+      description: Browser cookie storing encrypted session state for web interactions.
+    CsrfHeaderAuth:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: Anti-CSRF token token header matching decoded session cookie for unsafe HTTP methods.
+    BearerTokenAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: BearerToken
+      description: HTTP Bearer authorization token for programmatic API and automation testing clients.
+
+  responses:
+    BadRequestError:
+      description: Malformed or unreadable request payload.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardError'
+          examples:
+            badRequest:
+              value:
+                message: "The request body could not be decoded or contains invalid syntax."
+    UnauthorizedError:
+      description: Unauthenticated. Missing or invalid credentials.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardError'
+          examples:
+            unauthenticated:
+              value:
+                message: "Unauthenticated. Credentials or active session required."
+    ForbiddenError:
+      description: Forbidden. Insufficient role permissions or access denied to requested resource.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardError'
+          examples:
+            forbidden:
+              value:
+                message: "Action not permitted for the authenticated user role."
+    NotFoundError:
+      description: The requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardError'
+          examples:
+            notFound:
+              value:
+                message: "The requested resource was not found."
+    ValidationError:
+      description: Semantic validation failure (HTTP 422 Unprocessable Content).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorPayload'
+          examples:
+            fieldErrors:
+              summary: Validation failure with field-specific messages
+              value:
+                message: "The given data was invalid."
+                errors:
+                  new_status:
+                    - "La transición de estado de 'received' a 'approved' no está permitida por las reglas del dominio."
+                  comment:
+                    - "El campo comment es obligatorio cuando new_status es rejected."
+                  evidences.0:
+                    - "El campo evidences.0 debe ser un archivo de tipo: jpg, jpeg, png, pdf."
+    ServerError:
+      description: Internal server failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StandardError'
+          examples:
+            serverError:
+              value:
+                message: "An internal server error occurred while processing the request."
+
+  schemas:
+    # ── Strict Domain Enums ────────────────────────────────────────────────
+    TicketStatus:
+      type: string
+      description: Formal statuses governing the return ticket workflow.
+      enum:
+        - received
+        - under_review
+        - more_information_requested
+        - approved
+        - rejected
+        - closed
+      example: received
+
+    ItemCondition:
+      type: string
+      description: Physical condition of returned product at intake.
+      enum:
+        - sealed
+        - opened
+        - damaged
+      example: sealed
+
+    UserRole:
+      type: string
+      description: Access control role for administrative operators.
+      enum:
+        - admin
+        - support
+      example: support
+
+    # ── Input Payloads ─────────────────────────────────────────────────────
+    OrderLookupPayload:
+      type: object
+      required:
+        - order_number
+        - customer_dni
+      properties:
+        order_number:
+          type: string
+          description: External sales order identifier.
+          example: "ORD-2026-10492"
+        customer_dni:
+          type: string
+          description: Customer national identity document number.
+          pattern: '^[0-9]{8,15}$'
+          example: "44556677"
+
+    TrackByCodePayload:
+      type: object
+      required:
+        - tracking_code
+        - customer_dni
+      properties:
+        tracking_code:
+          type: string
+          description: Return ticket public tracking code.
+          example: "RET-4D8B9A1C"
+        customer_dni:
+          type: string
+          description: Customer national identity document number.
+          example: "44556677"
+
+    TicketItemInput:
+      type: object
+      required:
+        - order_item_id
+        - return_reason_id
+        - quantity
+        - condition
+      properties:
+        order_item_id:
+          type: string
+          format: uuid
+          description: UUID referencing the specific item within the sales order.
+          example: "9d36a8e0-1234-4f39-8b9a-10f8d02c8001"
+        return_reason_id:
+          type: string
+          format: uuid
+          description: UUID referencing the catalog return reason.
+          example: "9d36a8e0-5678-4f39-8b9a-10f8d02c8002"
+        quantity:
+          type: integer
+          minimum: 1
+          description: Quantity of units to return.
+          example: 1
+        condition:
+          $ref: '#/components/schemas/ItemCondition'
+
+    CreateTicketPayload:
+      type: object
+      required:
+        - items
+        - evidences
+      properties:
+        items:
+          type: array
+          minItems: 1
+          description: List of items included in the return request.
+          items:
+            $ref: '#/components/schemas/TicketItemInput'
+        customer_notes:
+          type:
+            - string
+            - "null"
+          maxLength: 1000
+          description: Customer explanation and remarks regarding the return request.
+          example: "El producto llegó con el empaque roto y falta una pieza."
+        evidences:
+          type: array
+          minItems: 1
+          maxItems: 5
+          description: Binary file attachments (1 to 5 files; max 5120 KB each; formats JPEG, PNG, PDF).
+          items:
+            type: string
+            format: binary
+
+    AdditionalEvidencePayload:
+      type: object
+      required:
+        - evidences
+      properties:
+        evidences:
+          type: array
+          minItems: 1
+          maxItems: 5
+          description: Additional binary files submitted in response to support request.
+          items:
+            type: string
+            format: binary
+        customer_notes:
+          type:
+            - string
+            - "null"
+          maxLength: 1000
+          description: Customer supplementary message.
+          example: "Adjunto fotografía del número de serie y caja original."
+
+    UpdateTicketStatusPayload:
+      type: object
+      required:
+        - new_status
+      properties:
+        new_status:
+          $ref: '#/components/schemas/TicketStatus'
+        comment:
+          type:
+            - string
+            - "null"
+          maxLength: 1000
+          description: Operator decision comment. Mandatory when `new_status` is `rejected` or `more_information_requested`.
+          example: "El producto fue evaluado físicamente y presenta signos evidentes de impacto externo."
+
+    # ── Output Data Entities ───────────────────────────────────────────────
+    OrderLookupResponse:
+      type: object
+      required:
+        - success
+        - message
+        - has_active_ticket
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Order verified successfully."
+        redirect_url:
+          type: string
+          example: "/returns/dashboard"
+        has_active_ticket:
+          type: boolean
+          example: false
+        order:
+          $ref: '#/components/schemas/OrderSummary'
+
+    TicketCreatedResponse:
+      type: object
+      required:
+        - success
+        - tracking_code
+        - ticket_id
+        - current_status
+      properties:
+        success:
+          type: boolean
+          example: true
+        ticket_id:
+          type: string
+          format: uuid
+          example: "9d36a8e1-5b72-4f39-8b9a-10f8d02c8901"
+        tracking_code:
+          type: string
+          example: "RET-4D8B9A1C"
+        current_status:
+          $ref: '#/components/schemas/TicketStatus'
+        redirect_url:
+          type: string
+          example: "/returns/success"
+
+    TicketTrackingResponse:
+      type: object
+      required:
+        - ticket
+      properties:
+        ticket:
+          $ref: '#/components/schemas/ReturnTicketDetail'
+        order:
+          $ref: '#/components/schemas/OrderSummary'
+
+    AdminTicketDetailResponse:
+      type: object
+      required:
+        - ticket
+        - statuses
+      properties:
+        ticket:
+          $ref: '#/components/schemas/ReturnTicketDetail'
+        statuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketStatus'
+
+    StatusUpdateSuccessResponse:
+      type: object
+      required:
+        - success
+        - message
+        - ticket
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Estado actualizado correctamente."
+        ticket:
+          $ref: '#/components/schemas/ReturnTicket'
+
+    EvidenceUploadResponse:
+      type: object
+      required:
+        - success
+        - message
+        - tracking_code
+        - current_status
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Información y evidencias adicionales enviadas correctamente."
+        tracking_code:
+          type: string
+          example: "RET-4D8B9A1C"
+        current_status:
+          type: string
+          example: "under_review"
+
+    # ── Canonical Domain Schemas ───────────────────────────────────────────
+    OrderSummary:
+      type: object
+      required:
+        - order_id
+        - order_number
+        - customer_full_name
+        - customer_dni
+        - order_date
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+          example: "ORD-2026-10492"
+        customer_full_name:
+          type: string
+          example: "Juan Pérez García"
+        customer_email:
+          type: string
+          format: email
+          example: "juan.perez@example.com"
+        customer_dni:
+          type: string
+          example: "44556677"
+        order_date:
+          type: string
+          format: date-time
+          example: "2026-10-05T10:00:00.000000Z"
+        order_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+
+    OrderItem:
+      type: object
+      required:
+        - order_item_id
+        - product_code
+        - product_name
+        - quantity
+        - unit_price
+      properties:
+        order_item_id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        product_code:
+          type: string
+          example: "ART-77291"
+        product_name:
+          type: string
+          example: "Goma en barra Pritt 40g"
+        quantity:
+          type: integer
+          example: 2
+        unit_price:
+          type: string
+          example: "8.50"
+
+    ReturnItem:
+      type: object
+      required:
+        - return_item_id
+        - ticket_id
+        - order_item_id
+        - reason_id
+        - quantity_to_return
+        - condition
+      properties:
+        return_item_id:
+          type: string
+          format: uuid
+        ticket_id:
+          type: string
+          format: uuid
+        order_item_id:
+          type: string
+          format: uuid
+        reason_id:
+          type: string
+          format: uuid
+        quantity_to_return:
+          type: integer
+          example: 1
+        condition:
+          $ref: '#/components/schemas/ItemCondition'
+        admin_comment:
+          type:
+            - string
+            - "null"
+        order_item:
+          $ref: '#/components/schemas/OrderItem'
+        reason:
+          $ref: '#/components/schemas/ReturnReason'
+
+    ReturnReason:
+      type: object
+      required:
+        - reason_id
+        - name
+      properties:
+        reason_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "DEFECTIVE"
+        description:
+          type:
+            - string
+            - "null"
+          example: "Defecto de fábrica verificado"
+
+    Evidence:
+      type: object
+      required:
+        - evidence_id
+        - ticket_id
+        - file_name
+        - mime_type
+        - uploaded_at
+      properties:
+        evidence_id:
+          type: string
+          format: uuid
+        ticket_id:
+          type: string
+          format: uuid
+        file_name:
+          type: string
+          example: "foto_producto_danado.jpg"
+        file_path:
+          type: string
+          example: "evidences/a8fbc71902bc45.jpg"
+        mime_type:
+          type: string
+          example: "image/jpeg"
+        uploaded_at:
+          type: string
+          format: date-time
+
+    StatusHistoryEntry:
+      type: object
+      required:
+        - history_id
+        - ticket_id
+        - new_status
+        - changed_at
+      properties:
+        history_id:
+          type: string
+          format: uuid
+        ticket_id:
+          type: string
+          format: uuid
+        old_status:
+          type:
+            - string
+            - "null"
+          enum:
+            - received
+            - under_review
+            - more_information_requested
+            - approved
+            - rejected
+            - closed
+            - null
+          example: "received"
+        new_status:
+          $ref: '#/components/schemas/TicketStatus'
+        changed_by_user_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        comment:
+          type:
+            - string
+            - "null"
+          example: "Iniciando inspección física del producto."
+        changed_at:
+          type: string
+          format: date-time
+        changed_by:
+          $ref: '#/components/schemas/AuditUser'
+
+    AuditUser:
+      type: object
+      required:
+        - user_id
+        - full_name
+        - role
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+          example: "Carlos Soporte"
+        role:
+          $ref: '#/components/schemas/UserRole'
+
+    ReturnTicket:
+      type: object
+      required:
+        - ticket_id
+        - tracking_code
+        - order_id
+        - current_status
+        - created_at
+      properties:
+        ticket_id:
+          type: string
+          format: uuid
+          example: "9d36a8e1-5b72-4f39-8b9a-10f8d02c8901"
+        tracking_code:
+          type: string
+          example: "RET-4D8B9A1C"
+        order_id:
+          type: string
+          format: uuid
+        current_status:
+          $ref: '#/components/schemas/TicketStatus'
+        customer_comment:
+          type:
+            - string
+            - "null"
+          example: "El producto llegó dañado."
+        created_by_user_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-09T14:32:00.000000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-10-09T14:32:00.000000Z"
+
+    ReturnTicketDetail:
+      allOf:
+        - $ref: '#/components/schemas/ReturnTicket'
+        - type: object
+          properties:
+            order:
+              $ref: '#/components/schemas/OrderSummary'
+            return_items:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReturnItem'
+            evidences:
+              type: array
+              items:
+                $ref: '#/components/schemas/Evidence'
+            status_history:
+              type: array
+              items:
+                $ref: '#/components/schemas/StatusHistoryEntry'
+
+    PaginatedTicketCollection:
+      type: object
+      required:
+        - data
+        - current_page
+        - per_page
+        - total
+        - last_page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReturnTicketDetail'
+        current_page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 15
+        total:
+          type: integer
+          example: 42
+        last_page:
+          type: integer
+          example: 3
+        from:
+          type: integer
+          example: 1
+        to:
+          type: integer
+          example: 15
+        first_page_url:
+          type: string
+          example: "http://localhost:8000/admin/tickets?page=1"
+        last_page_url:
+          type: string
+          example: "http://localhost:8000/admin/tickets?page=3"
+        next_page_url:
+          type:
+            - string
+            - "null"
+          example: "http://localhost:8000/admin/tickets?page=2"
+        prev_page_url:
+          type:
+            - string
+            - "null"
+          example: null
+
+    # ── Standard Error Contracts ───────────────────────────────────────────
+    ValidationErrorPayload:
+      type: object
+      required:
+        - message
+        - errors
+      description: Standard HTTP 422 validation response mapping specific field keys to error messages.
+      properties:
+        message:
+          type: string
+          description: High-level explanation of validation failure.
+          example: "The given data was invalid."
+        errors:
+          type: object
+          description: Key-value map where each key is a payload field and each value is an array of error messages.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            new_status:
+              - "La transición de estado de 'received' a 'approved' no está permitida por las reglas del dominio."
+            comment:
+              - "El campo comment es obligatorio cuando new_status es rejected."
+            evidences:
+              - "El campo evidences debe tener como mínimo 1 elementos."
+
+    StandardError:
+      type: object
+      required:
+        - message
+      description: Standard error response structure for 400, 401, 403, 404, and 500 status codes.
+      properties:
+        message:
+          type: string
+          description: Human-readable error description.
+          example: "Acceso no autorizado."
