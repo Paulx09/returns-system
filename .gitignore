@@ -10,6 +10,8 @@
 .phpunit.result.cache
 coverage/
 html-report/
+test-results/
+playwright-report/
 *.cov
 .pcov
 xdebug/
