@@ -1002,12 +1002,12 @@
               "formdata": [
                 {
                   "key": "customer_notes",
-                  "value": "Adjunto fotografía solicitada de la etiqueta de serie.",
+                  "value": "Adjunto documento PDF formal con comprobante y evidencia solicitada.",
                   "type": "text"
                 },
                 {
                   "key": "evidences[]",
-                  "src": "postman/fixtures/sample_evidence.png",
+                  "src": "postman/fixtures/sample_evidence.pdf",
                   "type": "file"
                 }
               ]
