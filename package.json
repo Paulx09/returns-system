@@ -6,7 +6,9 @@
         "build": "vite build",
         "dev": "vite",
         "test": "vitest run",
-        "test:coverage": "vitest run --coverage"
+        "test:coverage": "vitest run --coverage",
+        "test:api": "newman run postman/returns-api.collection.json -e postman/local.environment.json --reporters cli",
+        "test:api:report": "newman run postman/returns-api.collection.json -e postman/local.environment.json --reporters cli,htmlextra --reporter-htmlextra-export storage/app/qa-reports/api-report.html"
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",
@@ -24,6 +26,8 @@
         "concurrently": "^9.0.1",
         "jsdom": "^25.0.1",
         "laravel-vite-plugin": "^2.0.0",
+        "newman": "^6.2.3",
+        "newman-reporter-htmlextra": "^1.23.1",
         "postcss": "^8.4.31",
         "react": "^18.2.0",
         "react-aria": "^3.52.1",
