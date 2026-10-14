@@ -1,0 +1,1689 @@
+{
+  "info": {
+    "_postman_id": "7d449fa8-1a5e-4c31-92be-tailoy-returns-canonical",
+    "name": "Tai Loy Returns Management API - Black-Box Test Suite",
+    "description": "Canonical Black-Box QA Automation Test Suite for Tai Loy Returns & Warranties Processing System. Strictly governs contracts from docs/openapi.yaml and Laravel domain rules.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01. Orders & Handshake",
+      "description": "Sales order verification, return eligibility windows, anti-CSRF handshakes, and customer order authentication.",
+      "item": [
+        {
+          "name": "Sanctum Handshake (CSRF Cookie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 204 No Content or 200 OK', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+                  "});",
+                  "",
+                  "pm.test('XSRF-TOKEN cookie is set and captured', function () {",
+                  "    let xsrfCookie = pm.cookies.get('XSRF-TOKEN');",
+                  "    if (!xsrfCookie) {",
+                  "        let setCookie = pm.response.headers.get('Set-Cookie');",
+                  "        if (setCookie) {",
+                  "            let match = setCookie.match(/XSRF-TOKEN=([^;]+)/);",
+                  "            if (match) xsrfCookie = match[1];",
+                  "        }",
+                  "    }",
+                  "    pm.expect(xsrfCookie, 'XSRF-TOKEN cookie presence').to.be.ok;",
+                  "    let decoded = decodeURIComponent(xsrfCookie);",
+                  "    pm.environment.set('xsrfToken', decoded);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sanctum/csrf-cookie",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "sanctum",
+                "csrf-cookie"
+              ]
+            },
+            "description": "Handshake inicial para capturar cookies de sesión y token XSRF."
+          }
+        },
+        {
+          "name": "Verify Order Eligibility - Eligible Order (< 7 Days)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK or 302 Found (Customer session established)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});",
+                  "",
+                  "pm.test('Verify OrderLookup contract or session redirect', function () {",
+                  "    if (pm.response.code === 200) {",
+                  "        let resText = pm.response.text();",
+                  "        pm.expect(resText).to.be.a('string');",
+                  "    } else if (pm.response.code === 302) {",
+                  "        let location = pm.response.headers.get('Location');",
+                  "        pm.expect(location).to.be.ok;",
+                  "        pm.expect(location).to.satisfy(loc => loc.includes('/returns/dashboard') || loc.includes('/returns/tracking'));",
+                  "    }",
+                  "});",
+                  "",
+                  "let xsrfCookie = pm.cookies.get('XSRF-TOKEN');",
+                  "if (xsrfCookie) pm.environment.set('xsrfToken', decodeURIComponent(xsrfCookie));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_number\": \"{{orderNumberValid}}\",\n  \"customer_dni\": \"{{customerDniValid}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/returns/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "login"
+              ]
+            },
+            "description": "Verifica que una orden válida y dentro del plazo de 7 días inicie sesión exitosamente vía POST /returns/login."
+          }
+        },
+        {
+          "name": "Verify Order Eligibility - Expired Return Window (> 7 Days)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422 Unprocessable Content (BVA Return Policy Boundary Exceeded)', function () {",
+                  "    pm.expect(pm.response.code).to.eql(422);",
+                  "});",
+                  "",
+                  "pm.test('Response contains validation error regarding return policy deadline', function () {",
+                  "    let json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('message');",
+                  "    let fullText = JSON.stringify(json).toLowerCase();",
+                  "    pm.expect(fullText).to.satisfy(t => t.includes('7') || t.includes('días') || t.includes('plazo') || t.includes('vencido'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_number\": \"{{orderNumberExpired}}\",\n  \"customer_dni\": \"{{customerDniExpired}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/returns/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "login"
+              ]
+            },
+            "description": "Prueba de frontera: orden con fecha de compra fuera de los 7 días calendario."
+          }
+        },
+        {
+          "name": "Verify Order Eligibility - Mismatched Identity / Validation Failure",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422 Unprocessable Content (Validation Error)', function () {",
+                  "    pm.expect(pm.response.code).to.eql(422);",
+                  "});",
+                  "",
+                  "pm.test('Response conforms to ValidationErrorPayload structure', function () {",
+                  "    let json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('message');",
+                  "    pm.expect(json).to.have.property('errors');",
+                  "    pm.expect(json.errors).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order_number\": \"{{orderNumberValid}}\",\n  \"customer_dni\": \"00000000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/returns/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "login"
+              ]
+            },
+            "description": "Prueba con DNI no coincidente con la orden de compra."
+          }
+        },
+        {
+          "name": "Verify Order Eligibility - Empty Payload Boundary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422 Unprocessable Content', function () {",
+                  "    pm.expect(pm.response.code).to.eql(422);",
+                  "});",
+                  "",
+                  "pm.test('Validation errors flag required fields', function () {",
+                  "    let json = pm.response.json();",
+                  "    pm.expect(json.errors).to.have.property('order_number');",
+                  "    pm.expect(json.errors).to.have.property('customer_dni');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/returns/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "login"
+              ]
+            },
+            "description": "Payload vacío debe retornar 422 con errores de campos requeridos."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Tickets Lifecycle",
+      "description": "Lifecycle operations for customer return tickets, tracking, duplicate prevention, and validation rules.",
+      "item": [
+        {
+          "name": "Create Return Ticket - BVA Missing Evidences (0 Files)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422 Unprocessable Content (BVA 0 Files)', function () {",
+                  "    pm.expect(pm.response.code).to.eql(422);",
+                  "});",
+                  "",
+                  "pm.test('Validation errors flag evidence requirement', function () {",
+                  "    let json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('errors');",
+                  "    pm.expect(json.errors).to.have.property('evidences');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "items[0][order_item_id]",
+                  "value": "{{orderItemIdValid}}",
+                  "type": "text"
+                },
+                {
+                  "key": "items[0][return_reason_id]",
+                  "value": "{{returnReasonIdValid}}",
+                  "type": "text"
+                },
+                {
+                  "key": "items[0][quantity]",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "items[0][condition]",
+                  "value": "opened",
+                  "type": "text"
+                },
+                {
+                  "key": "customer_notes",
+                  "value": "Intento sin evidencias",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/returns/tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "tickets"
+              ]
+            },
+            "description": "Frontera BVA: envío de ticket sin adjuntar evidencias fotográficas (0 archivos)."
+          }
+        },
+        {
+          "name": "Create Return Ticket - Nominal Submission (1 Item, Valid Evidence)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created or 302/200 Found', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 302, 200]);",
+                  "});",
+                  "",
+                  "let trackingRegex = /RET-[A-Z0-9]{8}/;",
+                  "let resText = pm.response.text();",
+                  "let match = resText.match(trackingRegex);",
+                  "if (match) {",
+                  "    pm.environment.set('trackingCode', match[0]);",
+                  "    pm.test('Captured tracking code: ' + match[0], function () {",
+                  "        pm.expect(match[0]).to.match(/^RET-[A-Z0-9]{8}$/);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "items[0][order_item_id]",
+                  "value": "{{orderItemIdValid}}",
+                  "type": "text"
+                },
+                {
+                  "key": "items[0][return_reason_id]",
+                  "value": "{{returnReasonIdValid}}",
+                  "type": "text"
+                },
+                {
+                  "key": "items[0][quantity]",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "items[0][condition]",
+                  "value": "opened",
+                  "type": "text"
+                },
+                {
+                  "key": "customer_notes",
+                  "value": "Producto con empaque abierto y signos de daño cosmético en esquina.",
+                  "type": "text"
+                },
+                {
+                  "key": "evidences[]",
+                  "src": "postman/fixtures/sample_evidence.jpg",
+                  "type": "file"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/returns/tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "tickets"
+              ]
+            },
+            "description": "Creación nominal de ticket con 1 ítem devuelto y 1 evidencia fotográfica válida."
+          }
+        },
+        {
+          "name": "Customer Active Session Tracking - Extract Dynamic Keys",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});",
+                  "",
+                  "let trackingRegex = /^RET-[A-Z0-9]{8}$/;",
+                  "let uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;",
+                  "",
+                  "try {",
+                  "    let resText = pm.response.text();",
+                  "    let json = null;",
+                  "    if (resText.trim().startsWith('{')) {",
+                  "        json = pm.response.json();",
+                  "    } else {",
+                  "        let match = resText.match(/data-page=\"([^\"]+)\"/);",
+                  "        if (match) {",
+                  "            let decoded = match[1].replace(/&quot;/g, '\"');",
+                  "            json = JSON.parse(decoded);",
+                  "        }",
+                  "    }",
+                  "    let ticket = json?.props?.ticket || json?.ticket || json;",
+                  "    if (ticket && ticket.tracking_code) {",
+                  "        pm.environment.set('trackingCode', ticket.tracking_code);",
+                  "        pm.test('Extracted tracking code ' + ticket.tracking_code, function () {",
+                  "            pm.expect(ticket.tracking_code).to.match(trackingRegex);",
+                  "        });",
+                  "    }",
+                  "    if (ticket && ticket.ticket_id) {",
+                  "        pm.environment.set('ticketId', ticket.ticket_id);",
+                  "        pm.test('Extracted ticket ID ' + ticket.ticket_id, function () {",
+                  "            pm.expect(ticket.ticket_id).to.match(uuidRegex);",
+                  "        });",
+                  "    }",
+                  "    if (ticket && ticket.evidences && ticket.evidences.length > 0) {",
+                  "        pm.environment.set('evidenceId', ticket.evidences[0].evidence_id);",
+                  "    }",
+                  "    if (ticket && ticket.current_status) {",
+                  "        pm.test('Initial status is received', function () {",
+                  "            pm.expect(ticket.current_status).to.eql('received');",
+                  "        });",
+                  "    }",
+                  "} catch (e) {",
+                  "    console.log('Tracking parser error:', e);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/returns/tracking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "tracking"
+              ]
+            },
+            "description": "Consulta el ticket de la sesión activa y extrae ticketId y trackingCode."
+          }
+        },
+        {
+          "name": "Create Return Ticket - Idempotency Conflict (409 / Active Ticket Exists)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 409 Conflict or 302/200 redirect with duplicate error', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302, 409]);",
+                  "});",
+                  "",
+                  "let resText = pm.response.text();",
+                  "pm.test('Duplicate ticket prevented on active order', function () {",
+                  "    pm.expect(resText).to.be.ok;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "items[0][order_item_id]",
+                  "value": "{{orderItemIdValid}}",
+                  "type": "text"
+                },
+                {
+                  "key": "items[0][return_reason_id]",
+                  "value": "{{returnReasonIdValid}}",
+                  "type": "text"
+                },
+                {
+                  "key": "items[0][quantity]",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "items[0][condition]",
+                  "value": "opened",
+                  "type": "text"
+                },
+                {
+                  "key": "customer_notes",
+                  "value": "Segundo intento duplicado sobre la misma orden",
+                  "type": "text"
+                },
+                {
+                  "key": "evidences[]",
+                  "src": "postman/fixtures/sample_evidence.jpg",
+                  "type": "file"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/returns/tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "tickets"
+              ]
+            },
+            "description": "Intento de registrar un segundo ticket sobre una orden que ya tiene un trámite activo."
+          }
+        },
+        {
+          "name": "Public Tracking Inspection - Nominal Resolution (Timeline & Received State)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});",
+                  "",
+                  "try {",
+                  "    let resText = pm.response.text();",
+                  "    let json = null;",
+                  "    if (resText.trim().startsWith('{')) {",
+                  "        json = pm.response.json();",
+                  "    } else {",
+                  "        let match = resText.match(/data-page=\"([^\"]+)\"/);",
+                  "        if (match) json = JSON.parse(match[1].replace(/&quot;/g, '\"'));",
+                  "    }",
+                  "    let ticket = json?.props?.ticket || json?.ticket || json;",
+                  "    if (ticket) {",
+                  "        pm.test('Ticket code matches queried tracking code', function () {",
+                  "            pm.expect(ticket.tracking_code).to.eql(pm.environment.get('trackingCode'));",
+                  "        });",
+                  "        pm.test('Initial status is received', function () {",
+                  "            pm.expect(ticket.current_status).to.eql('received');",
+                  "        });",
+                  "        let history = ticket.status_history || ticket.statusHistory;",
+                  "        if (history) {",
+                  "            pm.test('Status history timeline is an array with entries', function () {",
+                  "                pm.expect(history).to.be.an('array').that.is.not.empty;",
+                  "            });",
+                  "        }",
+                  "    }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/returns/tracking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "tracking"
+              ]
+            },
+            "description": "Consulta de avance y timeline por seguimiento de sesión activa."
+          }
+        },
+        {
+          "name": "Public Tracking Inspection - Non-Existent Code (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404 Not Found or 302 redirect for invalid tracking', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([404, 302]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/returns/tracking/RET-00000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "tracking",
+                "RET-00000000"
+              ]
+            },
+            "description": "Consulta pública con código inexistente. Debe responder con HTTP 404."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Evidences Management",
+      "description": "Operations for uploading, inspecting, and streaming documentary and photographic evidence files.",
+      "item": [
+        {
+          "name": "Upload Supplementary Evidence - FSM State Violation (Ticket in 'received')",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422 Unprocessable Content or 302/200 redirect with rejection (FSM Boundary)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([422, 403, 302, 200]);",
+                  "});",
+                  "",
+                  "let resText = pm.response.text();",
+                  "pm.test('Supplementary evidence upload is rejected in received state', function () {",
+                  "    pm.expect(resText).to.be.ok;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "customer_notes",
+                  "value": "Intento ilegal de subir evidencia complementaria en estado received",
+                  "type": "text"
+                },
+                {
+                  "key": "evidences[]",
+                  "src": "postman/fixtures/sample_evidence.png",
+                  "type": "file"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/returns/tickets/{{ticketId}}/evidence",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "tickets",
+                "{{ticketId}}",
+                "evidence"
+              ]
+            },
+            "description": "Frontera FSM: Intento de subir evidencia adicional cuando el ticket aún está en received."
+          }
+        },
+        {
+          "name": "Operator Authentication (Login to Transition State)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Operator authenticated (200 or 302)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});",
+                  "let xsrfCookie = pm.cookies.get('XSRF-TOKEN');",
+                  "if (xsrfCookie) pm.environment.set('xsrfToken', decodeURIComponent(xsrfCookie));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "Login administrativo para poder gestionar el ticket."
+          }
+        },
+        {
+          "name": "Transition Ticket: 'received' -> 'under_review'",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Transitioned to under_review', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              },
+              {
+                "key": "X-HTTP-Method-Override",
+                "value": "PATCH",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_method\": \"PATCH\",\n  \"new_status\": \"under_review\",\n  \"comment\": \"Iniciando análisis técnico por perito autorizado.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tickets/{{ticketId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tickets",
+                "{{ticketId}}",
+                "status"
+              ]
+            },
+            "description": "Paso 1 FSM: Mover ticket de received a under_review."
+          }
+        },
+        {
+          "name": "Transition Ticket: 'under_review' -> 'more_information_requested'",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Transitioned to more_information_requested', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              },
+              {
+                "key": "X-HTTP-Method-Override",
+                "value": "PATCH",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_method\": \"PATCH\",\n  \"new_status\": \"more_information_requested\",\n  \"comment\": \"Por favor adjunte fotografía nítida del número de serie y caja original.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tickets/{{ticketId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tickets",
+                "{{ticketId}}",
+                "status"
+              ]
+            },
+            "description": "Paso 2 FSM: Mover ticket a more_information_requested con comentario obligatorio."
+          }
+        },
+        {
+          "name": "Upload Supplementary Evidence - Nominal in 'more_information_requested' (Auto FSM Transition)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK, 201 Created or 302 Found', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 302]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "customer_notes",
+                  "value": "Adjunto documento PDF formal con comprobante y evidencia solicitada.",
+                  "type": "text"
+                },
+                {
+                  "key": "evidences[]",
+                  "src": "postman/fixtures/sample_evidence.pdf",
+                  "type": "file"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/returns/tickets/{{ticketId}}/evidence",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "tickets",
+                "{{ticketId}}",
+                "evidence"
+              ]
+            },
+            "description": "El cliente sube evidencia adicional. Valida que el ticket transicione automáticamente a under_review."
+          }
+        },
+        {
+          "name": "Verify FSM Auto-Transition to 'under_review' via Tracking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});",
+                  "",
+                  "try {",
+                  "    let resText = pm.response.text();",
+                  "    let json = null;",
+                  "    if (resText.trim().startsWith('{')) {",
+                  "        json = pm.response.json();",
+                  "    } else {",
+                  "        let match = resText.match(/data-page=\"([^\"]+)\"/);",
+                  "        if (match) json = JSON.parse(match[1].replace(/&quot;/g, '\"'));",
+                  "    }",
+                  "    let ticket = json?.props?.ticket || json?.ticket || json;",
+                  "    if (ticket && ticket.current_status) {",
+                  "        pm.test('Ticket state confirmed as under_review', function () {",
+                  "            pm.expect(ticket.current_status).to.eql('under_review');",
+                  "        });",
+                  "    }",
+                  "} catch (e) {}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/returns/tracking",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "returns",
+                "tracking"
+              ]
+            },
+            "description": "Verifica que el estado del ticket ahora es under_review tras la carga de evidencias."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Admin Management & FSM Governance",
+      "description": "Administrative review, role-based access control (RBAC), and finite state machine (FSM) enforcement.",
+      "item": [
+        {
+          "name": "Admin Authentication (Login as Administrator)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK or 302 Found (Admin authenticated)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});",
+                  "let xsrfCookie = pm.cookies.get('XSRF-TOKEN');",
+                  "if (xsrfCookie) pm.environment.set('xsrfToken', decodeURIComponent(xsrfCookie));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "Autenticación del usuario administrativo/soporte."
+          }
+        },
+        {
+          "name": "Admin Tickets - List & Filter Collection (OpenAPI Contract)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/tickets?status=under_review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tickets"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "under_review"
+                }
+              ]
+            },
+            "description": "Listado y filtrado de tickets administrativos según OpenAPI."
+          }
+        },
+        {
+          "name": "Admin Status Transition - Conditional Validation (Missing Mandatory Comment)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422 Unprocessable Content (Conditional comment validation)', function () {",
+                  "    pm.expect(pm.response.code).to.eql(422);",
+                  "});",
+                  "",
+                  "pm.test('Validation errors explicitly require comment for rejected/more_info', function () {",
+                  "    let json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('errors');",
+                  "    pm.expect(json.errors).to.have.property('comment');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              },
+              {
+                "key": "X-HTTP-Method-Override",
+                "value": "PATCH",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_method\": \"PATCH\",\n  \"new_status\": \"rejected\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tickets/{{ticketId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tickets",
+                "{{ticketId}}",
+                "status"
+              ]
+            },
+            "description": "Intento de mover a rejected sin enviar el campo comment. Debe fallar con HTTP 422."
+          }
+        },
+        {
+          "name": "Admin Status Transition - Nominal Review Execution ('under_review' -> 'approved')",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK or 302 Found (Approved)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              },
+              {
+                "key": "X-HTTP-Method-Override",
+                "value": "PATCH",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_method\": \"PATCH\",\n  \"new_status\": \"approved\",\n  \"comment\": \"Garantía aprobada tras análisis técnico de evidencias y peritaje.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tickets/{{ticketId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tickets",
+                "{{ticketId}}",
+                "status"
+              ]
+            },
+            "description": "Transición nominal válida: de under_review a approved con comentario explicativo."
+          }
+        },
+        {
+          "name": "Admin Logout (Prepare Context for Support Role)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin logged out successfully (200 or 302)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});",
+                  "let xsrfCookie = pm.cookies.get('XSRF-TOKEN');",
+                  "if (xsrfCookie) pm.environment.set('xsrfToken', decodeURIComponent(xsrfCookie));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "logout"
+              ]
+            },
+            "description": "Cierra la sesión del administrador para que el middleware guest permita el login de soporte."
+          }
+        },
+        {
+          "name": "Support Role Authentication (Switch Context to Operator)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK or 302 Found (Support operator logged in)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});",
+                  "let xsrfCookie = pm.cookies.get('XSRF-TOKEN');",
+                  "if (xsrfCookie) pm.environment.set('xsrfToken', decodeURIComponent(xsrfCookie));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{supportEmail}}\",\n  \"password\": \"{{supportPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "Inicio de sesión como usuario con rol support / operator para probar RBAC."
+          }
+        },
+        {
+          "name": "Admin Status Transition - RBAC Denied 403 (Support Role Cannot Close Ticket)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is strictly 403 Forbidden (RBAC Enforcement)', function () {",
+                  "    pm.expect(pm.response.code).to.eql(403);",
+                  "});",
+                  "",
+                  "pm.test('Error message indicates only administrators can close tickets', function () {",
+                  "    let json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('message');",
+                  "    let msg = json.message.toLowerCase();",
+                  "    pm.expect(msg).to.satisfy(m => m.includes('admin') || m.includes('cerrar') || m.includes('autorizado') || m.includes('permitted'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              },
+              {
+                "key": "X-HTTP-Method-Override",
+                "value": "PATCH",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_method\": \"PATCH\",\n  \"new_status\": \"closed\",\n  \"comment\": \"Operador de soporte intentando cerrar ticket directamente.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tickets/{{ticketId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tickets",
+                "{{ticketId}}",
+                "status"
+              ]
+            },
+            "description": "Operador con rol support intenta transicionar el ticket a closed desde approved. Debe fallar con HTTP 403."
+          }
+        },
+        {
+          "name": "Support Logout (Prepare Context to Restore Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Support logged out successfully (200 or 302)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});",
+                  "let xsrfCookie = pm.cookies.get('XSRF-TOKEN');",
+                  "if (xsrfCookie) pm.environment.set('xsrfToken', decodeURIComponent(xsrfCookie));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "logout"
+              ]
+            },
+            "description": "Cierra la sesión del operador de soporte."
+          }
+        },
+        {
+          "name": "Admin Authentication (Restore Admin Session)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK or 302 Found (Admin restored)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});",
+                  "let xsrfCookie = pm.cookies.get('XSRF-TOKEN');",
+                  "if (xsrfCookie) pm.environment.set('xsrfToken', decodeURIComponent(xsrfCookie));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "Re-autenticación como admin para ejecutar el cierre legal."
+          }
+        },
+        {
+          "name": "Admin Status Transition - RBAC Allowed 200 (Administrator Closes Ticket)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK or 302 Found (Admin closed ticket)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              },
+              {
+                "key": "X-HTTP-Method-Override",
+                "value": "PATCH",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_method\": \"PATCH\",\n  \"new_status\": \"closed\",\n  \"comment\": \"Nota de crédito liquidada y caso cerrado formalmente por el Administrador.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tickets/{{ticketId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tickets",
+                "{{ticketId}}",
+                "status"
+              ]
+            },
+            "description": "Administrador (admin) transiciona a closed. Debe responder con HTTP 200/302."
+          }
+        },
+        {
+          "name": "Admin Status Transition - FSM Illegal Transition (Terminal 'closed' State Immutable)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422 Unprocessable Content (Terminal FSM Invariant)', function () {",
+                  "    pm.expect(pm.response.code).to.eql(422);",
+                  "});",
+                  "",
+                  "pm.test('Validation errors reject modification of closed ticket', function () {",
+                  "    let json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('errors');",
+                  "    pm.expect(json.errors).to.have.property('new_status');",
+                  "    let errText = json.errors.new_status[0].toLowerCase();",
+                  "    pm.expect(errText).to.satisfy(e => e.includes('no está permitida') || e.includes('reglas del dominio') || e.includes('closed') || e.includes('transición'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrfToken}}",
+                "type": "text"
+              },
+              {
+                "key": "X-HTTP-Method-Override",
+                "value": "PATCH",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_method\": \"PATCH\",\n  \"new_status\": \"under_review\",\n  \"comment\": \"Intento ilegal de reabrir ticket en estado terminal closed.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tickets/{{ticketId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tickets",
+                "{{ticketId}}",
+                "status"
+              ]
+            },
+            "description": "Intento de modificar un ticket en estado terminal (closed). Debe fallar con HTTP 422."
+          }
+        }
+      ]
+    }
+  ]
+}

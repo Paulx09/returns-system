@@ -1,0 +1,99 @@
+{
+  "id": "9d36a8e0-tailoy-returns-local-env",
+  "name": "Tai Loy Returns - Local Environment",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "orderNumberValid",
+      "value": "ORD-123456",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "customerDniValid",
+      "value": "12345678",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "orderItemIdValid",
+      "value": "01a11f3f-8c38-7046-b642-d7a23e8d4080",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "returnReasonIdValid",
+      "value": "01a11f3f-79f9-7386-9097-067c1476944e",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "orderNumberExpired",
+      "value": "ORD-290146",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "customerDniExpired",
+      "value": "40112710",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@tailoy.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "adminPassword",
+      "value": "password",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "supportEmail",
+      "value": "soporte@tailoy.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "supportPassword",
+      "value": "password",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "xsrfToken",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "trackingCode",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "ticketId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "evidenceId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2026-10-12T20:50:00.000Z",
+  "_postman_exported_using": "Postman/11.0.0"
+}
