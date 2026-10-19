@@ -19,10 +19,13 @@
     </source>
     <coverage includeUncoveredFiles="true" pathCoverage="true">
         <report>
-            <clover outputFile="build/coverage/returns-clover.xml"/>
+            <clover outputFile="storage/app/qa-reports/clover.xml"/>
             <text outputFile="build/coverage/returns-coverage.txt" showUncoveredFiles="true"/>
         </report>
     </coverage>
+    <logging>
+        <junit outputFile="storage/app/qa-reports/phpunit-junit.xml"/>
+    </logging>
     <php>
         <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
