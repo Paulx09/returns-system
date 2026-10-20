@@ -58,6 +58,9 @@
             "@php artisan test tests/Unit/Returns/Coverage tests/Unit/Returns/ExternalOrderServiceTest.php tests/Feature/Services/ExternalOrderServiceTest.php --coverage-clover=build/coverage/returns-clover.xml --coverage-text=build/coverage/returns-coverage.txt",
             "@php tools/verify-return-coverage.php build/coverage/returns-clover.xml"
         ],
+        "test:sonar": [
+            "@php -d memory_limit=512M artisan test tests/Unit/Returns/Coverage tests/Unit/Returns/ExternalOrderServiceTest.php tests/Feature/Services/ExternalOrderServiceTest.php --coverage-clover=storage/app/qa-reports/clover.xml --log-junit=storage/app/qa-reports/phpunit-junit.xml"
+        ],
         "analyse": [
             "@php -d memory_limit=512M vendor/bin/phpstan analyse --configuration=phpstan.neon --no-progress"
         ],

@@ -11,7 +11,9 @@
         "test:api:report": "newman run postman/returns-api.collection.json -e postman/local.environment.json --reporters cli,htmlextra --reporter-htmlextra-export storage/app/qa-reports/api-report.html",
         "test:e2e": "playwright test",
         "test:e2e:ui": "playwright test --ui",
-        "test:e2e:report": "playwright show-report"
+        "test:e2e:report": "playwright show-report",
+        "test:load:tracking": "k6 run k6/scenarios/tracking-query-load.js",
+        "test:load:order": "k6 run k6/scenarios/order-validation-stress.js"
     },
     "devDependencies": {
         "@axe-core/playwright": "^4.13.0",
