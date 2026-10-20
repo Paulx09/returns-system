@@ -65,7 +65,11 @@ function configureForm(initialData = { evidences: [], customer_notes: '' }, over
     const formState = {
         data: initialData,
         setData: vi.fn(),
-        post: vi.fn(),
+        post: vi.fn((url, options) => {
+            if (options && typeof options.onSuccess === 'function') {
+                options.onSuccess();
+            }
+        }),
         reset: vi.fn(),
         processing: false,
         errors: {},
@@ -296,6 +300,7 @@ describe('Tracking Component (White-Box & Branch Coverage Suite)', () => {
                     onSuccess: expect.any(Function),
                 })
             );
+            expect(form.reset).toHaveBeenCalled();
         });
 
         it('allows removing an attached file and disables submit button when empty', async () => {

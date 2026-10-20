@@ -12,9 +12,9 @@ export default defineConfig({
     ],
     test: {
         environment: 'jsdom',
-        pool: 'threads',
-        minThreads: 1,
-        maxThreads: 1,
+        pool: 'forks',
+        fileParallelism: false,
+        maxWorkers: 1,
         setupFiles: './resources/js/__tests__/setup.js',
         include: [
             'resources/js/__tests__/**/*.test.{js,jsx}',
