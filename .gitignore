@@ -21,7 +21,8 @@ xdebug/
 .phpstan.cache/
 phpstan.neon.cache/
 storage/framework/phpstan/
-
+build/coverage/*
+!build/coverage/.gitkeep
 
 # Laravel & Logs
 storage/framework/cache/*
