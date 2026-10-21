@@ -89,7 +89,7 @@ export default function Start() {
                                     id="order_number"
                                     type="text"
                                     name="order_number"
-                                    value={data.order_number ?? ''}
+                                    value={data.order_number}
                                     className="mt-2 block w-full border-gray-300 focus:border-[#05a060] focus:ring-[#05a060] rounded-lg shadow-sm"
                                     onChange={(e) => setData('order_number', e.target.value)}
                                     required
@@ -112,7 +112,7 @@ export default function Start() {
                                     id="tracking_code"
                                     type="text"
                                     name="tracking_code"
-                                    value={data.tracking_code ?? ''}
+                                    value={data.tracking_code}
                                     className="mt-2 block w-full border-gray-300 focus:border-[#05a060] focus:ring-[#05a060] rounded-lg shadow-sm font-mono uppercase"
                                     onChange={(e) => setData('tracking_code', e.target.value)}
                                     required
@@ -136,7 +136,7 @@ export default function Start() {
                                 id="customer_dni"
                                 type="text"
                                 name="customer_dni"
-                                value={data.customer_dni ?? ''}
+                                value={data.customer_dni}
                                 className="mt-2 block w-full border-gray-300 focus:border-[#05a060] focus:ring-[#05a060] rounded-lg shadow-sm"
                                 onChange={(e) => setData('customer_dni', e.target.value)}
                                 required

@@ -135,7 +135,7 @@ export default function Dashboard({ order, reasons }) {
                                                             type="number"
                                                             min="1"
                                                             max={item.quantity}
-                                                            value={itemData.quantity ?? ''}
+                                                            value={itemData.quantity}
                                                             onChange={(e) => updateItemData(item.order_item_id, 'quantity', parseInt(e.target.value) || '')}
                                                             aria-invalid={errors[`items.${index}.quantity`] ? 'true' : 'false'}
                                                             aria-describedby={errors[`items.${index}.quantity`] ? `error-quantity-${item.order_item_id}` : undefined}

@@ -53,7 +53,7 @@ const CONDITION_LABELS = {
 function getConditionLabel(condition) {
     if (!condition) return 'No especificada';
     const key = String(condition).toLowerCase().trim();
-    return CONDITION_LABELS[key] ?? CONDITION_LABELS[condition] ?? condition;
+    return CONDITION_LABELS[key] ?? condition;
 }
 
 
