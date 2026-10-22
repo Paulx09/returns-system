@@ -30,10 +30,28 @@ const order = {
 const reasons = [{ reason_id: 'reason-1', description: 'Producto defectuoso' }];
 
 function configureForm(initialData, overrides = {}) {
-    const formState = { data: initialData, setData: vi.fn(), post: vi.fn(), reset: vi.fn(), processing: false, errors: {}, ...overrides };
+    const formState = {
+        data: initialData,
+        setData: vi.fn(),
+        post: vi.fn((url, options) => {
+            if (options && typeof options.onSuccess === 'function') {
+                options.onSuccess();
+            }
+        }),
+        reset: vi.fn(),
+        processing: false,
+        errors: {},
+        ...overrides,
+    };
     useForm.mockImplementation((defaults) => {
         const [data, setFormData] = React.useState(initialData ?? defaults);
-        formState.setData.mockImplementation((field, value) => setFormData(current => ({ ...current, [field]: value })));
+        formState.setData.mockImplementation((field, value) => {
+            if (typeof field === 'function') {
+                setFormData(field);
+            } else {
+                setFormData(current => ({ ...current, [field]: value }));
+            }
+        });
         formState.data = data;
         return { data, setData: formState.setData, post: formState.post, reset: formState.reset, processing: formState.processing, errors: formState.errors };
     });
@@ -45,7 +63,7 @@ describe('Returns/Start', () => {
 
     it('submits valid order and identity data through the Inertia contract', async () => {
         const user = userEvent.setup();
-        const form = configureForm({ order_number: '', customer_dni: '' });
+        const form = configureForm({ order_number: '', customer_dni: '', tracking_code: '' });
         render(<Start />);
 
         await user.type(screen.getByLabelText('Número de Pedido'), 'ORD-123');
@@ -56,14 +74,14 @@ describe('Returns/Start', () => {
     });
 
     it('renders the contract error when the order is not found or invalid', () => {
-        configureForm({ order_number: '', customer_dni: '' }, { errors: { login: 'No se encontró el comprobante.' } });
+        configureForm({ order_number: '', customer_dni: '', tracking_code: '' }, { errors: { login: 'No se encontró el comprobante.' } });
         render(<Start />);
 
         expect(screen.getByText('No se encontró el comprobante.')).toBeVisible();
     });
 
     it('renders field-level validation errors from the login contract', () => {
-        configureForm({ order_number: '', customer_dni: '' }, {
+        configureForm({ order_number: '', customer_dni: '', tracking_code: '' }, {
             errors: { order_number: 'El pedido es obligatorio.', customer_dni: 'El DNI es obligatorio.' },
         });
         render(<Start />);
@@ -73,10 +91,41 @@ describe('Returns/Start', () => {
     });
 
     it('disables submission while the verification request is processing', () => {
-        configureForm({ order_number: '', customer_dni: '' }, { processing: true });
+        configureForm({ order_number: '', customer_dni: '', tracking_code: '' }, { processing: true });
         render(<Start />);
 
         expect(screen.getByRole('button', { name: 'Verificando...' })).toBeDisabled();
+    });
+
+    it('switches to tracking code mode and submits tracking contract', async () => {
+        const user = userEvent.setup();
+        const form = configureForm({ tracking_code: '', customer_dni: '' });
+        render(<Start />);
+
+        await user.click(screen.getByRole('tab', { name: 'Con Código de Seguimiento' }));
+        expect(screen.getByLabelText('Código de Seguimiento')).toBeVisible();
+
+        await user.type(screen.getByLabelText('Código de Seguimiento'), 'RET-12345678');
+        await user.type(screen.getByLabelText('DNI o CE del Comprador'), '87654321');
+        await user.click(screen.getByRole('button', { name: 'Consultar Seguimiento' }));
+
+        expect(form.post).toHaveBeenCalledWith('/route/returns.track-by-code');
+
+        await user.click(screen.getByRole('tab', { name: 'Con Pedido y DNI' }));
+        expect(screen.getByLabelText('Número de Pedido')).toBeVisible();
+    });
+
+    it('renders tracking error and tracking_code validation error when in tracking mode', async () => {
+        const user = userEvent.setup();
+        configureForm(
+            { tracking_code: '', customer_dni: '' },
+            { errors: { tracking: 'No se encontró el ticket.', tracking_code: 'El código es inválido.' } }
+        );
+        render(<Start />);
+
+        await user.click(screen.getByRole('tab', { name: 'Con Código de Seguimiento' }));
+        expect(screen.getByText('No se encontró el ticket.')).toBeVisible();
+        expect(screen.getByText('El código es inválido.')).toBeVisible();
     });
 });
 
@@ -192,6 +241,52 @@ describe('Returns/Dashboard', () => {
         await user.click(screen.getByRole('checkbox', { name: /Cuaderno/ }));
 
         expect(screen.getByRole('button', { name: 'Enviando...' })).toBeDisabled();
+    });
+
+    it('allows removing an attached evidence file from the list', async () => {
+        const user = userEvent.setup();
+        const evidence = new File(['valid image'], 'foto_recibo.jpg', { type: 'image/jpeg' });
+        const form = configureForm({
+            items: [{ order_item_id: 'item-1', return_reason_id: 'reason-1', quantity: 1, condition: 'sealed' }],
+            customer_notes: '',
+            evidences: [evidence],
+        });
+        render(<Dashboard order={order} reasons={reasons} />);
+
+        expect(screen.getByText('foto_recibo.jpg')).toBeVisible();
+        const removeBtn = screen.getByRole('button', { name: /eliminar evidencia adjunta/i });
+        await user.click(removeBtn);
+
+        expect(form.setData).toHaveBeenCalledWith('evidences', []);
+    });
+
+    it('renders per-item validation errors with aria attributes', async () => {
+        const user = userEvent.setup();
+        configureForm(
+            { items: [], customer_notes: '', evidences: [] },
+            {
+                errors: {
+                    'items.0.quantity': 'La cantidad es inválida.',
+                    'items.0.return_reason_id': 'El motivo es obligatorio.',
+                    'items.0.condition': 'El estado es obligatorio.',
+                },
+            }
+        );
+        render(<Dashboard order={order} reasons={reasons} />);
+
+        await user.click(screen.getByRole('checkbox', { name: /Cuaderno/ }));
+
+        const quantityInput = screen.getByLabelText(/Cantidad a devolver/i);
+        expect(quantityInput).toHaveAttribute('aria-invalid', 'true');
+        expect(quantityInput).toHaveAttribute('aria-describedby', 'error-quantity-item-1');
+
+        const reasonSelect = screen.getByLabelText(/Motivo/i);
+        expect(reasonSelect).toHaveAttribute('aria-invalid', 'true');
+        expect(reasonSelect).toHaveAttribute('aria-describedby', 'error-reason-item-1');
+
+        const conditionSelect = screen.getByLabelText(/Estado del producto/i);
+        expect(conditionSelect).toHaveAttribute('aria-invalid', 'true');
+        expect(conditionSelect).toHaveAttribute('aria-describedby', 'error-condition-item-1');
     });
 });
 

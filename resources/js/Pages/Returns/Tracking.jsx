@@ -53,16 +53,9 @@ const CONDITION_LABELS = {
 function getConditionLabel(condition) {
     if (!condition) return 'No especificada';
     const key = String(condition).toLowerCase().trim();
-    return CONDITION_LABELS[key] ?? CONDITION_LABELS[condition] ?? condition;
+    return CONDITION_LABELS[key] ?? condition;
 }
 
-function formatFileSize(bytes) {
-    if (!bytes || bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
 
 export default function Tracking({ ticket, order }) {
     const { flash } = usePage().props;

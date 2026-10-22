@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useForm } from '@inertiajs/react';
@@ -65,7 +65,11 @@ function configureForm(initialData = { evidences: [], customer_notes: '' }, over
     const formState = {
         data: initialData,
         setData: vi.fn(),
-        post: vi.fn(),
+        post: vi.fn((url, options) => {
+            if (options && typeof options.onSuccess === 'function') {
+                options.onSuccess();
+            }
+        }),
         reset: vi.fn(),
         processing: false,
         errors: {},
@@ -296,6 +300,7 @@ describe('Tracking Component (White-Box & Branch Coverage Suite)', () => {
                     onSuccess: expect.any(Function),
                 })
             );
+            expect(form.reset).toHaveBeenCalled();
         });
 
         it('allows removing an attached file and disables submit button when empty', async () => {
@@ -411,6 +416,136 @@ describe('Tracking Component (White-Box & Branch Coverage Suite)', () => {
             expect(evidenceLink).toHaveAttribute('href', '/route/returns.evidences.show');
             expect(evidenceLink).toHaveAttribute('target', '_blank');
             expect(evidenceLink).toHaveAttribute('rel', 'noopener noreferrer');
+        });
+    });
+
+    describe('Edge Cases and Branch Coverage Fallbacks', () => {
+        it('renders fallback messages when return_items, evidences, and status_history are empty', () => {
+            configureForm();
+            const emptyTicket = {
+                ...mockBaseTicket,
+                current_status: 'received',
+                return_items: [],
+                evidences: [],
+                status_history: [],
+            };
+            render(<Tracking ticket={emptyTicket} order={mockOrder} />);
+
+            expect(screen.getByText('Total: 0 productos')).toBeVisible();
+            expect(screen.getByText('No hay productos registrados en este ticket.')).toBeVisible();
+            expect(screen.getByText('No se adjuntaron archivos para esta solicitud.')).toBeVisible();
+            expect(screen.getByText('Sin historial registrado.')).toBeVisible();
+        });
+
+        it('renders multiple return items and handles null/missing item attributes', () => {
+            configureForm();
+            const multiItemTicket = {
+                ...mockBaseTicket,
+                return_items: [
+                    {
+                        return_item_id: 'item-1',
+                        quantity_to_return: 1,
+                        condition: null,
+                        order_item: null,
+                        reason: null,
+                    },
+                    {
+                        return_item_id: 'item-2',
+                        quantity_to_return: 3,
+                        condition: 'custom_state',
+                        order_item: {
+                            product_name: 'Plumones Faber-Castell 12U',
+                            product_code: 'PLU-FC-12',
+                        },
+                        reason: {
+                            description: 'No cumple expectativas',
+                        },
+                    },
+                ],
+            };
+            render(<Tracking ticket={multiItemTicket} order={mockOrder} />);
+
+            expect(screen.getByText('Total: 2 productos')).toBeVisible();
+            expect(screen.getByText('Producto de la orden')).toBeVisible();
+            expect(screen.getByText('Motivo: No especificado')).toBeVisible();
+            expect(screen.getByText('Condición: No especificada')).toBeVisible();
+            expect(screen.getByText('Plumones Faber-Castell 12U')).toBeVisible();
+            expect(screen.getByText('Código: PLU-FC-12')).toBeVisible();
+            expect(screen.getByText('Motivo: No cumple expectativas')).toBeVisible();
+            expect(screen.getByText('Condición: custom_state')).toBeVisible();
+        });
+
+        it('renders status resolution label for under_review state and default status badge for unknown status', () => {
+            configureForm();
+            const unknownTicket = {
+                ...mockBaseTicket,
+                current_status: 'unknown_state',
+            };
+            render(<Tracking ticket={unknownTicket} order={mockOrder} />);
+
+            expect(screen.getAllByText('unknown_state').length).toBeGreaterThan(0);
+        });
+
+        it('handles undefined return_items, legacy evidence id, and custom status in status history', () => {
+            configureForm();
+            const edgeTicket = {
+                ...mockBaseTicket,
+                return_items: undefined,
+                evidences: [{ id: 'ev-legacy-99', file_name: 'archivo_legacy.pdf' }],
+                status_history: [
+                    {
+                        history_id: 'hist-x',
+                        new_status: 'custom_status',
+                        changed_at: '2026-09-21T12:00:00Z',
+                        comment: 'Actualización personalizada',
+                    },
+                ],
+            };
+            render(<Tracking ticket={edgeTicket} order={mockOrder} />);
+
+            expect(screen.getByText('Total: 0 productos')).toBeVisible();
+            const legacyLink = screen.getByRole('link', { name: /Abrir archivo_legacy\.pdf/i });
+            expect(legacyLink).toHaveAttribute('href', '/route/returns.evidences.show');
+            expect(screen.getByText('custom_status')).toBeVisible();
+            expect(screen.getByText('"Actualización personalizada"')).toBeVisible();
+        });
+
+        it('resets copy feedback after timeout and safely handles absent clipboard API', async () => {
+            vi.useFakeTimers();
+            const writeTextMock = vi.fn().mockResolvedValue(undefined);
+            Object.defineProperty(navigator, 'clipboard', {
+                value: { writeText: writeTextMock },
+                writable: true,
+                configurable: true,
+            });
+
+            configureForm();
+            const { unmount } = render(<Tracking ticket={mockBaseTicket} order={mockOrder} />);
+
+            const copyBtn = screen.getByRole('button', { name: 'Copiar código de seguimiento' });
+            fireEvent.click(copyBtn);
+
+            expect(screen.getByText('✓ ¡Copiado!')).toBeVisible();
+
+            act(() => {
+                vi.advanceTimersByTime(3000);
+            });
+            expect(screen.getByText('Copiar')).toBeVisible();
+
+            unmount();
+
+            // Absence of clipboard
+            Object.defineProperty(navigator, 'clipboard', {
+                value: undefined,
+                writable: true,
+                configurable: true,
+            });
+            render(<Tracking ticket={mockBaseTicket} order={mockOrder} />);
+            const copyBtn2 = screen.getByRole('button', { name: 'Copiar código de seguimiento' });
+            fireEvent.click(copyBtn2);
+            expect(screen.queryByText('✓ ¡Copiado!')).not.toBeInTheDocument();
+
+            vi.useRealTimers();
         });
     });
 });
