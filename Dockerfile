@@ -19,6 +19,9 @@ RUN chmod -R 777 /app/storage /app/bootstrap/cache
 # Server port configuration for FrankenPHP/Caddy
 EXPOSE 8000
 
+RUN echo "expose_php = Off" > /usr/local/etc/php/conf.d/security.ini
+
+COPY docker/Caddyfile /etc/frankenphp/Caddyfile
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

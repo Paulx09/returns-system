@@ -28,6 +28,7 @@ try {
 $validOrder = ExternalOrderCache::updateOrCreate(
     ['order_number' => 'ORD-123456'],
     [
+        'customer_full_name' => 'Cliente Elegible',
         'customer_dni' => '12345678',
         'customer_email' => 'cliente@example.com',
         'order_date' => now()->subDays(2),
@@ -48,6 +49,7 @@ if ($validOrder->orderItems()->count() === 0) {
 ExternalOrderCache::updateOrCreate(
     ['order_number' => 'ORD-290146'],
     [
+        'customer_full_name' => 'Cliente Vencido',
         'customer_dni' => '40112710',
         'customer_email' => 'cliente.vencido@example.com',
         'order_date' => now()->subDays(15),
