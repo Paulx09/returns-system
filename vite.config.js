@@ -12,17 +12,14 @@ export default defineConfig({
     ],
     test: {
         environment: 'jsdom',
-        // Uso de procesos fork secuenciales para evitar deadlocks/timeouts de workers en Windows con JSDOM
         pool: 'forks',
         fileParallelism: false,
         maxWorkers: 1,
         setupFiles: './resources/js/__tests__/setup.js',
-        // Suites unitarias, de integración y auditoría de accesibilidad (axe-core)
         include: [
             'resources/js/__tests__/**/*.test.{js,jsx}',
             'resources/js/Pages/**/__tests__/**/*.test.{js,jsx}',
         ],
-        // Cobertura V8 delimitada a las vistas transaccionales del módulo de devoluciones
         coverage: {
             provider: 'v8',
             reporter: ['text', 'html'],

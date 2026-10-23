@@ -54,8 +54,8 @@ export default function () {
   // Rotación cíclica según VU e iteración actual
   const item = TRACKING_DATASET[(__VU + __ITER) % TRACKING_DATASET.length];
 
-  // Emulación de IP de cliente distribuido por VU e iteración para simular usuarios públicos reales
-  const clientIp = `192.168.${Math.floor((__VU * 100 + __ITER) / 250)}.${((__VU * 100 + __ITER) % 250) + 1}`;
+  // Emulación de IP de cliente por VU para simular usuarios distribuidos reales
+  const clientIp = `192.168.${Math.floor(__VU / 250)}.${(__VU % 250) + 1}`;
 
   const payload = JSON.stringify({
     tracking_code: item.tracking_code,
@@ -91,6 +91,7 @@ export default function () {
     'status is acceptable domain code (200, 302, or 422)': (r) =>
       [200, 302, 422].includes(r.status),
     'no 5xx server crash': () => !is5xx,
+    'latency complies with RNF-01 (< 3000ms)': (r) => r.timings.duration < 3000,
   });
 
   // Pacing constante

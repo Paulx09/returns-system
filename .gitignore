@@ -16,17 +16,12 @@ playwright-report/
 .pcov
 xdebug/
 .xdebug-trace/
-zap-baseline-report.html
-zap-baseline-report.json
-zap-*.html
-zap-*.json
 
 # Static Analysis
 .phpstan.cache/
 phpstan.neon.cache/
 storage/framework/phpstan/
-build/coverage/*
-!build/coverage/.gitkeep
+
 
 # Laravel & Logs
 storage/framework/cache/*

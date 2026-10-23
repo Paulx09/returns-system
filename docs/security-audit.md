@@ -2,8 +2,8 @@
 
 **Sistema:** Sistema Web de Control y Seguimiento de Solicitudes de Cambios y Devoluciones (SCD-TL)  
 **Organización:** Tai Loy S.A.  
-**Fecha:** 21 de Octubre de 2026  
-**Rama:** `perf/k6-docker-concurrency`
+**Fecha:** 14 de Octubre de 2026  
+**Rama:** `chore/security-owasp-top-10`
 
 ---
 
@@ -23,7 +23,7 @@
 | **A02:2021 - Cryptographic Failures** | Hashing unidireccional de contraseñas con **Bcrypt** (costo 12, `BCRYPT_ROUNDS=12`). Cookies de sesión con banderas `HttpOnly`, `SameSite=Lax` y `Secure` forzado sobre HTTPS. Clave `APP_KEY` de 256 bits. | `tests/Feature/Auth/PasswordUpdateTest.php`<br>`config/hashing.php`<br>`.env.example` |
 | **A03:2021 - Injection** | Mitigación total de SQLi mediante consultas preparadas parametrizadas en Eloquent ORM. Sanitización activa contra Stored XSS mediante `htmlspecialchars()` en comentarios del cliente y renderizado seguro por defecto en React JSX. | `tests/Feature/Returns/ReturnTicketSubmissionTest.php`<br>`app/Http/Controllers/ReturnTicketController.php` |
 | **A04:2021 - Insecure Design** | Rate limiting por IP mediante `throttle:5,1` en `/returns/login` y `/returns/track-by-code`. Máquina de Estados Finitos (FSM) estricta en modelo `ReturnTicket` (`canTransitionTo()`) que rechaza transiciones inválidas con error 422. Tracking Code aleatorio con entropía (`RET-` + `Str::random(8)`). Control inmutable de plazo de 7 días. | `tests/Feature/Admin/AdminTicketLifecycleTransitionTest.php`<br>`tests/Unit/Models/ReturnTicketTest.php`<br>`e2e/customer-returns-flow.spec.ts` |
-| **A05:2021 - Security Misconfiguration** | Configuración `APP_DEBUG=false` y logs protegidos. DocumentRoot restringido exclusivamente a `public/`. Ocultación de cabeceras de servidor (`expose_php = Off`, supresión de `X-Powered-By` y `Server` en Caddy/FrankenPHP). Cabeceras de seguridad HTTP completas: `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Embedder-Policy: credentialless`, `Cross-Origin-Resource-Policy: same-origin`, y Content Security Policy (CSP) con **nonces criptográficos dinámicos** por petición sin `'unsafe-inline'`. | `app/Http/Middleware/SecurityHeaders.php`<br>`docker/Caddyfile`<br>`Dockerfile`<br>`bootstrap/app.php` |
+| **A05:2021 - Security Misconfiguration** | Configuración `APP_DEBUG=false` y canal de logs protegido en producción. Exposición exclusiva del directorio `public/` como DocumentRoot (aislando `storage/` y código fuente). Cabeceras defensivas `X-Frame-Options: SAMEORIGIN` y `X-Content-Type-Options: nosniff`. | `bootstrap/app.php`<br>`.gitignore` |
 | **A06:2021 - Vulnerable and Outdated Components** | Bloqueo estricto de dependencias en `composer.lock` y `package-lock.json`. Análisis automatizado SCA con `composer audit` y `npm audit --omit=dev` (0 vulnerabilidades en producción). Análisis estático con PHPStan Nivel 8 y Laravel Pint. | `composer.lock`<br>`package.json`<br>`phpstan.neon` |
 | **A07:2021 - Identification and Authentication Failures** | Mitigación de fijación de sesión mediante `$request->session()->regenerate()` tras login exitoso y en consulta por código. Expiración de sesión por inactividad a 120 minutos (`SESSION_LIFETIME=120`) e invalidación total en logout. | `tests/Feature/Returns/CustomerAuthenticationTest.php`<br>`app/Http/Controllers/CustomerAuthController.php` |
 | **A08:2021 - Software and Data Integrity Failures** | Validación estricta de subida (`mimes:jpg,jpeg,png,pdf` y máximo 5 MB). Almacenamiento con hash aleatorio en disco privado no público (`Storage::disk('local')`) y servicio mediante `BinaryFileResponse`. Transaccionalidad atómica ACID (`DB::beginTransaction()`) con rollback y compensación en disco (eliminación de archivos huérfanos ante fallo). | `tests/Feature/Returns/EvidenceUploadTest.php`<br>`tests/Feature/Returns/ReturnTicketSubmissionTest.php` |
@@ -34,7 +34,7 @@
 
 ## 3. Verificación Dinámica DAST (OWASP ZAP)
 
-Comando Docker para reproducir el escaneo dinámico pasivo de línea base contra el servidor local mediante el framework de automatización y configuración `zap.conf`:
+Comando Docker para reproducir el escaneo dinámico pasivo de línea base contra el servidor local:
 
 ```bash
 docker run --rm \
@@ -42,7 +42,6 @@ docker run --rm \
   -t ghcr.io/zaproxy/zaproxy:stable \
   zap-baseline.py \
   -t http://host.docker.internal:8000 \
-  -c zap.conf \
   -r zap-baseline-report.html \
   -J zap-baseline-report.json \
   -I

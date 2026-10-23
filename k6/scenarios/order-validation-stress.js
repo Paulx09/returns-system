@@ -93,6 +93,7 @@ export default function () {
     'defensive response (200, 302, 422, or 429 rate limited)': (r) =>
       [200, 302, 422, 429].includes(r.status),
     'no 5xx database contention or crash': () => !is5xx,
+    'latency under 3000ms (RNF-01)': (r) => r.timings.duration < 3000,
   });
 
   // Pacing breve
