@@ -68,9 +68,11 @@
             "@php -d memory_limit=512M vendor/bin/phpstan analyse --configuration=phpstan.neon --no-progress"
         ],
         "test:returns:fast": [
+            "@php artisan config:clear --ansi",
             "cmd /d /c \"set XDEBUG_MODE=off&& php -d xdebug.mode=off artisan test tests/Feature/Returns tests/Unit/Returns --no-coverage\""
         ],
         "audit:returns": [
+            "@php artisan config:clear --ansi",
             "cmd /d /c \"set XDEBUG_MODE=develop,debug&& php -d memory_limit=512M -d xdebug.mode=develop,debug -d xdebug.start_with_request=no artisan test tests/Feature/Returns tests/Unit/Returns --profile --no-coverage\""
         ],
         "post-autoload-dump": [
