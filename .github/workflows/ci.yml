@@ -69,6 +69,8 @@ jobs:
         run: php artisan test --no-coverage
 
       - name: Run Frontend Component Tests (Vitest)
+        env:
+          LARAVEL_BYPASS_ENV_CHECK: 1
         run: npm test
 
       - name: Prepare Database for Integration & E2E
