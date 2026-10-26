@@ -9,6 +9,7 @@ use App\Models\Evidence;
 use App\Models\TicketStatusHistory;
 use App\Models\ExternalOrderCache;
 use App\Models\OrderItem;
+use App\Models\ReturnReason;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -24,6 +25,14 @@ try {
     // continue
 }
 
+ReturnReason::firstOrCreate(
+    ['reason_id' => '01a11f3f-79f9-7386-9097-067c1476944e'],
+    [
+        'name' => 'Producto Dañado',
+        'description' => 'El producto llegó con daños físicos o de fábrica.',
+    ]
+);
+
 // 1. Garantizar orden elegible (< 7 días) para Happy Path y consultas E2E
 $validOrder = ExternalOrderCache::updateOrCreate(
     ['order_number' => 'ORD-123456'],
@@ -35,15 +44,16 @@ $validOrder = ExternalOrderCache::updateOrCreate(
     ]
 );
 
-if ($validOrder->orderItems()->count() === 0) {
-    OrderItem::create([
+OrderItem::updateOrCreate(
+    ['order_item_id' => '01a11f3f-8c38-7046-b642-d7a23e8d4080'],
+    [
         'order_id' => $validOrder->order_id,
         'product_name' => 'Mochila Escolar Spider-Man',
         'product_code' => 'MOC-SPD-01',
         'quantity' => 2,
         'unit_price' => 89.90,
-    ]);
-}
+    ]
+);
 
 // 2. Garantizar orden vencida (> 7 días) para pruebas de bloqueo de plazo
 ExternalOrderCache::updateOrCreate(

@@ -14,6 +14,7 @@ class ReturnReasonSeeder extends Seeder
     {
         $reasons = [
             [
+                'reason_id' => '01a11f3f-79f9-7386-9097-067c1476944e',
                 'name' => 'Producto Dañado',
                 'description' => 'El producto llegó con daños físicos o de fábrica.',
             ],
@@ -32,7 +33,7 @@ class ReturnReasonSeeder extends Seeder
         ];
 
         foreach ($reasons as $reason) {
-            ReturnReason::create($reason);
+            ReturnReason::updateOrCreate(['name' => $reason['name']], $reason);
         }
     }
 }

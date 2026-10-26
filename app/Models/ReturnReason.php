@@ -16,6 +16,7 @@ class ReturnReason extends Model
     protected $primaryKey = 'reason_id';
 
     protected $fillable = [
+        'reason_id',
         'name',
         'description',
     ];

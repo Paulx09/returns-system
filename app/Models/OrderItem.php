@@ -17,6 +17,7 @@ class OrderItem extends Model
     protected $primaryKey = 'order_item_id';
 
     protected $fillable = [
+        'order_item_id',
         'order_id',
         'product_code',
         'product_name',
