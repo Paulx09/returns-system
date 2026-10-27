@@ -25,15 +25,18 @@ try {
     // continue
 }
 
-ReturnReason::firstOrCreate(
-    ['reason_id' => '01a11f3f-79f9-7386-9097-067c1476944e'],
-    [
-        'name' => 'Producto Dañado',
-        'description' => 'El producto llegó con daños físicos o de fábrica.',
-    ]
-);
+// 1. Eliminar y volver a crear el motivo canónico para asegurar UUID limpio y evitar colisiones
+ReturnReason::where('name', 'Producto Dañado')
+    ->orWhere('reason_id', '01a11f3f-79f9-7386-9097-067c1476944e')
+    ->forceDelete();
 
-// 1. Garantizar orden elegible (< 7 días) para Happy Path y consultas E2E
+ReturnReason::create([
+    'reason_id' => '01a11f3f-79f9-7386-9097-067c1476944e',
+    'name' => 'Producto Dañado',
+    'description' => 'El producto llegó con daños físicos o de fábrica.',
+]);
+
+// 2. Garantizar orden elegible (< 7 días) para Happy Path y consultas E2E
 $validOrder = ExternalOrderCache::updateOrCreate(
     ['order_number' => 'ORD-123456'],
     [
@@ -44,19 +47,22 @@ $validOrder = ExternalOrderCache::updateOrCreate(
     ]
 );
 
-OrderItem::updateOrCreate(
-    ['order_item_id' => '01a11f3f-8c38-7046-b642-d7a23e8d4080'],
-    [
-        'order_id' => $validOrder->order_id,
-        'product_name' => 'Mochila Escolar Spider-Man',
-        'product_code' => 'MOC-SPD-01',
-        'quantity' => 2,
-        'unit_price' => 89.90,
-    ]
-);
+// Eliminar todos los items previos de la orden para evitar duplicados en la UI
+OrderItem::where('order_id', $validOrder->order_id)
+    ->orWhere('order_item_id', '01a11f3f-8c38-7046-b642-d7a23e8d4080')
+    ->forceDelete();
 
-// 2. Garantizar orden vencida (> 7 días) para pruebas de bloqueo de plazo
-ExternalOrderCache::updateOrCreate(
+OrderItem::create([
+    'order_item_id' => '01a11f3f-8c38-7046-b642-d7a23e8d4080',
+    'order_id' => $validOrder->order_id,
+    'product_name' => 'Mochila Escolar Spider-Man',
+    'product_code' => 'MOC-SPD-01',
+    'quantity' => 2,
+    'unit_price' => 89.90,
+]);
+
+// 3. Garantizar orden vencida (> 7 días) para pruebas de bloqueo de plazo
+$expiredOrder = ExternalOrderCache::updateOrCreate(
     ['order_number' => 'ORD-290146'],
     [
         'customer_full_name' => 'Cliente Vencido',
@@ -65,5 +71,7 @@ ExternalOrderCache::updateOrCreate(
         'order_date' => now()->subDays(15),
     ]
 );
+
+OrderItem::where('order_id', $expiredOrder->order_id)->forceDelete();
 
 echo "DB reset complete. Tickets: " . ReturnTicket::count() . PHP_EOL;
