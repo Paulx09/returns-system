@@ -47,9 +47,9 @@ Especificación de Casos de Prueba (Test Cases) para el Sistema de Control y Seg
 | **TC-ADM-02** | HU-08 | Bloqueo de acceso no autenticado a panel administrativo (401/403) | Seguridad | Automatizado | `tests/Feature/Middleware/AdminMiddlewareTest.php` | `[ ]` |
 | **TC-ADM-03** | HU-09 | Filtrado por estado y paginación reactiva en bandeja | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[ ]` |
 | **TC-ADM-04** | HU-10 | Visualización y descarga segura de evidencias adjuntas | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php` | `[ ]` |
-| **TC-ADM-05** | HU-11 | Transición de estado con justificación obligatoria en rechazo/info | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketLifecycleTransitionTest.php` | `[ ]` |
-| **TC-ADM-06** | HU-12 | Intento de cierre de ticket (`closed`) por `operator` (Bloqueo 403) | Seguridad / RBAC | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[ ]` |
-| **TC-ADM-07** | HU-12 | Cierre definitivo de ticket (`closed`) exclusivo por rol `admin` | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[ ]` |
+| **TC-ADM-05** | HU-11 | Transición de estado con justificación obligatoria en rechazo/info | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketLifecycleTransitionTest.php` | `[X]` |
+| **TC-ADM-06** | HU-12 | Intento de cierre de ticket (`closed`) por `operator` (Bloqueo 403) | Seguridad / RBAC | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[X]` |
+| **TC-ADM-07** | HU-12 | Cierre definitivo de ticket (`closed`) exclusivo por rol `admin` | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[X]` |
 | **TC-EXP-01** | General | Resiliencia de formulario ante botón Atrás del navegador | Exploratoria | Manual | N/A (Flujo de navegación) | `[ ]` |
 
 ---

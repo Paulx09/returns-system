@@ -1,4 +1,13 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
+
+const ALLOWED_TRANSITIONS = {
+    received:                   ['under_review', 'rejected'],
+    under_review:               ['more_information_requested', 'approved', 'rejected'],
+    more_information_requested: ['under_review', 'closed'],
+    approved:                   ['closed'],
+    rejected:                   [],
+    closed:                     [],
+};
 
 const STATUS_CONFIG = {
     received:                   { label: 'Recibido',         bg: 'bg-blue-100',   text: 'text-blue-800'   },
@@ -45,8 +54,21 @@ function SectionCard({ title, children, borderColorClass = "border-t-4 border-t-
     );
 }
 
-export default function Show({ ticket, statuses }) {
+export default function Show({ ticket, statuses = [], allowed_transitions, auth }) {
     const commentRequired = ['rejected', 'more_information_requested'];
+    const page = typeof usePage === 'function' ? usePage() : null;
+    const currentUser = auth?.user ?? page?.props?.auth?.user;
+    const isAdmin = currentUser?.role === 'admin';
+
+    const rawAllowedTransitions = Array.isArray(allowed_transitions)
+        ? allowed_transitions
+        : Array.isArray(ticket?.allowed_transitions)
+            ? ticket.allowed_transitions
+            : (ALLOWED_TRANSITIONS[ticket?.current_status] ?? []);
+
+    const availableStatuses = (Array.isArray(statuses) && statuses.length > 0 ? statuses : rawAllowedTransitions)
+        .filter(s => rawAllowedTransitions.includes(s))
+        .filter(s => isAdmin || s !== 'closed');
 
     const { data, setData, patch, processing, errors } = useForm({
         new_status: '',
@@ -59,6 +81,7 @@ export default function Show({ ticket, statuses }) {
     };
 
     const isCommentRequired = commentRequired.includes(data.new_status);
+    const isSubmitDisabled = processing || !data.new_status || (isCommentRequired && !data.comment.trim());
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -246,13 +269,15 @@ export default function Show({ ticket, statuses }) {
                                         className="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:ring-[#05a060] focus:border-[#05a060]"
                                     >
                                         <option value="">Seleccione...</option>
-                                        {statuses
-                                            .filter(s => s !== 'received') // received es el estado inicial, no se puede volver
-                                            .map(s => (
-                                                <option key={s} value={s}>{STATUS_CONFIG[s]?.label ?? s}</option>
-                                            ))
-                                        }
+                                        {availableStatuses.map(s => (
+                                            <option key={s} value={s}>{STATUS_CONFIG[s]?.label ?? s}</option>
+                                        ))}
                                     </select>
+                                    {!isAdmin && rawAllowedTransitions.includes('closed') && (
+                                        <p className="mt-1 text-xs text-amber-700">
+                                            Solo administradores pueden cerrar solicitudes.
+                                        </p>
+                                    )}
                                     {errors.new_status && (
                                         <p className="mt-1 text-xs text-red-600">{errors.new_status}</p>
                                     )}
@@ -282,7 +307,7 @@ export default function Show({ ticket, statuses }) {
 
                                 <button
                                     type="submit"
-                                    disabled={processing || !data.new_status}
+                                    disabled={isSubmitDisabled}
                                     className="w-full py-2.5 px-4 bg-[#fbdb04] text-[#002E6E] text-sm font-bold rounded-md hover:bg-[#05a060] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
                                 >
                                     {processing ? 'Guardando...' : 'Actualizar Estado'}

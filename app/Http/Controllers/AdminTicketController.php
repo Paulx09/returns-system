@@ -52,9 +52,13 @@ class AdminTicketController extends Controller
             'statusHistory.changedBy',
         ]);
 
+        $allowedTransitions = ReturnTicket::ALLOWED_TRANSITIONS[$ticket->current_status] ?? [];
+        $ticket->setAttribute('allowed_transitions', $allowedTransitions);
+
         return Inertia::render('Admin/Tickets/Show', [
-            'ticket'   => $ticket,
-            'statuses' => ReturnTicket::STATUSES,
+            'ticket'              => $ticket,
+            'statuses'            => ReturnTicket::STATUSES,
+            'allowed_transitions' => $allowedTransitions,
         ]);
     }
 
