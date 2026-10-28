@@ -151,6 +151,16 @@ describe('Returns/Start', () => {
 
         expect(form.post).not.toHaveBeenCalled();
         expect(screen.getByText('El DNI debe contener exactamente 8 dígitos numéricos.')).toBeVisible();
+
+        await user.clear(dniInput);
+        await user.type(dniInput, '12345678');
+        expect(screen.queryByText('El DNI debe contener exactamente 8 dígitos numéricos.')).not.toBeInTheDocument();
+
+        cleanup();
+        configureForm({ order_number: 'ORD-123456' });
+        render(<Start />);
+        await user.click(screen.getByRole('button', { name: 'Iniciar Solicitud' }));
+        expect(screen.getByText('El DNI debe contener exactamente 8 dígitos numéricos.')).toBeVisible();
     });
 });
 
@@ -205,11 +215,14 @@ describe('Returns/Dashboard', () => {
 
     it('requires reason and evidence before enabling submission', async () => {
         const user = userEvent.setup();
-        configureForm({ items: [], customer_notes: '', evidences: [] });
-        render(<Dashboard order={order} reasons={reasons} />);
+        const form = configureForm({ items: [], customer_notes: '', evidences: [] });
+        const { container } = render(<Dashboard order={order} reasons={reasons} />);
 
         await user.click(screen.getByRole('checkbox', { name: /Cuaderno/ }));
         expect(screen.getByRole('button', { name: 'Enviar Solicitud' })).toBeDisabled();
+
+        fireEvent.submit(container.querySelector('form'));
+        expect(form.post).not.toHaveBeenCalled();
 
         await user.selectOptions(screen.getByRole('combobox', { name: 'Motivo' }), 'reason-1');
         const evidence = new File(['valid image'], 'evidence.jpg', { type: 'image/jpeg' });
@@ -353,6 +366,28 @@ describe('Returns/Dashboard', () => {
             expect(screen.getByText('Las evidencias deben ser archivos con formato JPG, PNG o PDF.')).toBeVisible();
             expect(screen.getByText('Formato no permitido (solo JPG, PNG o PDF)')).toBeVisible();
             expect(screen.getByRole('button', { name: 'Enviar Solicitud' })).toBeDisabled();
+        });
+
+        // Also test > 5 files, extensionless/undefined file props, and empty files list
+        const sixFiles = [
+            new File(['1'], 'f1.jpg', { type: 'image/jpeg' }),
+            new File(['2'], 'f2.jpg', { type: 'image/jpeg' }),
+            new File(['3'], 'f3.jpg', { type: 'image/jpeg' }),
+            new File(['4'], 'f4.jpg', { type: 'image/jpeg' }),
+            new File(['5'], 'f5.jpg', { type: 'image/jpeg' }),
+            { name: undefined, size: undefined, type: '' },
+        ];
+        fireEvent.change(screen.getByLabelText('Fotos o Documentos de Evidencia'), {
+            target: { files: sixFiles },
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('Puedes adjuntar como máximo 5 archivos de evidencia.')).toBeVisible();
+            expect(screen.getByText('Las evidencias deben ser archivos con formato JPG, PNG o PDF.')).toBeVisible();
+        });
+
+        fireEvent.change(screen.getByLabelText('Fotos o Documentos de Evidencia'), {
+            target: { files: null },
         });
     });
 });
