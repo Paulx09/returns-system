@@ -63,6 +63,25 @@ class ReturnTicketController extends Controller
             // Security: limit to 5MB, only images and pdfs
             'evidences' => 'required|array|min:1|max:5',
             'evidences.*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ], [
+            'items.required' => 'Debes seleccionar al menos un producto para devolver.',
+            'items.min' => 'Debes seleccionar al menos un producto para devolver.',
+            'items.*.return_reason_id.required' => 'Selecciona un motivo de devolución válido.',
+            'items.*.return_reason_id.exists' => 'El motivo de devolución seleccionado no es válido.',
+            'items.*.quantity.required' => 'Indica la cantidad a devolver.',
+            'items.*.quantity.min' => 'La cantidad a devolver debe ser de al menos 1 unidad.',
+            'items.*.condition.required' => 'Selecciona el estado físico del producto.',
+            'items.*.condition.in' => 'El estado del producto seleccionado no es válido.',
+            'customer_notes.max' => 'El comentario no puede superar los 1000 caracteres.',
+            'evidences.required' => 'Debes adjuntar al menos un archivo de evidencia.',
+            'evidences.array' => 'El formato de las evidencias adjuntas no es válido.',
+            'evidences.min' => 'Debes adjuntar al menos un archivo de evidencia.',
+            'evidences.max' => 'Puedes adjuntar como máximo 5 archivos de evidencia.',
+            'evidences.*.required' => 'Debes adjuntar un archivo de evidencia válido.',
+            'evidences.*.file' => 'Las evidencias deben ser archivos con formato JPG, PNG o PDF.',
+            'evidences.*.mimes' => 'Las evidencias deben ser archivos con formato JPG, PNG o PDF.',
+            'evidences.*.max' => 'Cada archivo de evidencia no debe superar los 5 MB.',
+            'evidences.*.uploaded' => 'Cada archivo de evidencia no debe superar los 5 MB.',
         ]);
         
         DB::beginTransaction();
@@ -216,6 +235,17 @@ class ReturnTicketController extends Controller
             'evidences' => 'required|array|min:1|max:5',
             'evidences.*' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'customer_notes' => 'nullable|string|max:1000',
+        ], [
+            'evidences.required' => 'Debes adjuntar al menos un archivo de evidencia.',
+            'evidences.array' => 'El formato de las evidencias adjuntas no es válido.',
+            'evidences.min' => 'Debes adjuntar al menos un archivo de evidencia.',
+            'evidences.max' => 'Puedes adjuntar como máximo 5 archivos de evidencia.',
+            'evidences.*.required' => 'Debes adjuntar un archivo de evidencia válido.',
+            'evidences.*.file' => 'Las evidencias deben ser archivos con formato JPG, PNG o PDF.',
+            'evidences.*.mimes' => 'Las evidencias deben ser archivos con formato JPG, PNG o PDF.',
+            'evidences.*.max' => 'Cada archivo de evidencia no debe superar los 5 MB.',
+            'evidences.*.uploaded' => 'Cada archivo de evidencia no debe superar los 5 MB.',
+            'customer_notes.max' => 'El comentario no puede superar los 1000 caracteres.',
         ]);
 
         DB::beginTransaction();

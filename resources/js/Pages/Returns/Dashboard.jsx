@@ -1,6 +1,23 @@
 import React, { useState } from 'react';
 import { useForm, Head, Link } from '@inertiajs/react';
 
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_FILES_COUNT = 5;
+const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf'];
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+
+function isValidEvidenceType(file) {
+    const name = String(file?.name ?? '').toLowerCase();
+    const ext = name.includes('.') ? name.split('.').pop() : '';
+    const hasValidExt = ALLOWED_EXTENSIONS.includes(ext);
+    const hasValidMime = !file?.type || ALLOWED_MIME_TYPES.includes(file.type);
+    return hasValidExt && hasValidMime;
+}
+
+function isValidEvidenceSize(file) {
+    return typeof file?.size === 'number' ? file.size <= MAX_FILE_SIZE_BYTES : true;
+}
+
 export default function Dashboard({ order, reasons }) {
     const { data, setData, post, processing, errors } = useForm({
         items: [], // { order_item_id, return_reason_id, quantity, condition }
@@ -46,18 +63,39 @@ export default function Dashboard({ order, reasons }) {
         }));
     };
 
+    const handleEvidenceChange = (e) => {
+        const files = Array.from(e.target.files ?? []);
+        setData('evidences', files);
+    };
+
     const removeEvidence = (indexToRemove) => {
         setData('evidences', data.evidences.filter((_, idx) => idx !== indexToRemove));
     };
 
+    const hasTooManyFiles = data.evidences.length > MAX_FILES_COUNT;
+    const hasOversizedFile = data.evidences.some(file => !isValidEvidenceSize(file));
+    const hasInvalidTypeFile = data.evidences.some(file => !isValidEvidenceType(file));
+
+    const clientEvidenceErrors = [
+        hasTooManyFiles ? 'Puedes adjuntar como máximo 5 archivos de evidencia.' : null,
+        hasOversizedFile ? 'Cada archivo de evidencia no debe superar los 5 MB.' : null,
+        hasInvalidTypeFile ? 'Las evidencias deben ser archivos con formato JPG, PNG o PDF.' : null,
+    ].filter(Boolean);
+
     const submit = (e) => {
         e.preventDefault();
+        if (!canSubmit) {
+            return;
+        }
         post(route('returns.tickets.store'));
     };
 
     const canSubmit = data.items.length > 0
         && data.items.every(item => item.return_reason_id && item.quantity > 0)
-        && data.evidences.length > 0;
+        && data.evidences.length > 0
+        && !hasTooManyFiles
+        && !hasOversizedFile
+        && !hasInvalidTypeFile;
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -217,31 +255,61 @@ export default function Dashboard({ order, reasons }) {
                                                 type="file"
                                                 multiple
                                                 accept=".jpg,.jpeg,.png,.pdf"
-                                                onChange={e => setData('evidences', Array.from(e.target.files))}
-                                                aria-invalid={errors.evidences || Object.keys(errors).some(k => k.startsWith('evidences.')) ? 'true' : 'false'}
-                                                aria-describedby={`evidences_help ${errors.evidences ? 'error-evidences' : ''}`}
+                                                onChange={handleEvidenceChange}
+                                                aria-invalid={clientEvidenceErrors.length > 0 || errors.evidences || Object.keys(errors).some(k => k.startsWith('evidences.')) ? 'true' : 'false'}
+                                                aria-describedby={`evidences_help ${errors.evidences || clientEvidenceErrors.length > 0 ? 'error-evidences' : ''}`}
                                                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#05a060] file:text-white hover:file:bg-[#04854f]"
                                             />
 
                                             {data.evidences.length > 0 && (
                                                 <ul className="mt-3 space-y-2" aria-label="Lista de evidencias adjuntas">
-                                                    {data.evidences.map((file, idx) => (
-                                                        <li key={idx} className="flex items-center justify-between bg-gray-50 border border-gray-200 p-2 rounded text-xs">
-                                                            <span className="truncate max-w-xs text-gray-700">{file.name}</span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => removeEvidence(idx)}
-                                                                aria-label="Eliminar evidencia adjunta"
-                                                                className="text-red-500 hover:text-red-700 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
+                                                    {data.evidences.map((file, idx) => {
+                                                        const validSize = isValidEvidenceSize(file);
+                                                        const validType = isValidEvidenceType(file);
+                                                        const isFileInvalid = !validSize || !validType;
+                                                        return (
+                                                            <li
+                                                                key={idx}
+                                                                className={`flex items-center justify-between border p-2 rounded text-xs ${
+                                                                    isFileInvalid
+                                                                        ? 'bg-red-50 border-red-300 text-red-800'
+                                                                        : 'bg-gray-50 border-gray-200 text-gray-700'
+                                                                }`}
                                                             >
-                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                                                </svg>
-                                                            </button>
-                                                        </li>
-                                                    ))}
+                                                                <div className="flex flex-col min-w-0 pr-2">
+                                                                    <span className="truncate max-w-xs font-medium">{file.name}</span>
+                                                                    {!validSize && (
+                                                                        <span className="text-[11px] text-red-700 font-semibold">
+                                                                            Excede el límite de 5 MB
+                                                                        </span>
+                                                                    )}
+                                                                    {!validType && (
+                                                                        <span className="text-[11px] text-red-700 font-semibold">
+                                                                            Formato no permitido (solo JPG, PNG o PDF)
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeEvidence(idx)}
+                                                                    aria-label="Eliminar evidencia adjunta"
+                                                                    className="text-red-500 hover:text-red-700 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
+                                                                >
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                                    </svg>
+                                                                </button>
+                                                            </li>
+                                                        );
+                                                    })}
                                                 </ul>
                                             )}
+
+                                            {clientEvidenceErrors.map((msg, idx) => (
+                                                <p key={`client-ev-err-${idx}`} id={idx === 0 ? 'error-evidences' : undefined} role="alert" aria-live="polite" className="mt-2 text-sm text-red-600 font-medium">
+                                                    {msg}
+                                                </p>
+                                            ))}
 
                                             {errors.evidences && (
                                                 <p id="error-evidences" role="alert" aria-live="polite" className="mt-2 text-sm text-red-600 font-medium">
