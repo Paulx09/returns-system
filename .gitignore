@@ -20,6 +20,8 @@ zap-baseline-report.html
 zap-baseline-report.json
 zap-*.html
 zap-*.json
+qa-fixtures/
+tools/generate-qa-fixtures.php
 
 # Static Analysis
 .phpstan.cache/
