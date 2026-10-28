@@ -121,17 +121,18 @@ class AdminTicketController extends Controller
     /**
      * Descargar o visualizar evidencia (protegida por middleware admin).
      */
-    public function showEvidence(Evidence $evidence): BinaryFileResponse
+    public function showEvidence(Request $request, Evidence $evidence): BinaryFileResponse
     {
         if (!Storage::disk('local')->exists($evidence->file_path)) {
             abort(404, 'La evidencia solicitada no existe.');
         }
 
         $absolutePath = Storage::disk('local')->path($evidence->file_path);
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
 
         return response()->file($absolutePath, [
             'Content-Type' => $evidence->mime_type,
-            'Content-Disposition' => 'inline; filename="' . $evidence->file_name . '"'
+            'Content-Disposition' => $disposition . '; filename="' . $evidence->file_name . '"'
         ]);
     }
 }

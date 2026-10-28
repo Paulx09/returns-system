@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Evidence;
 use App\Models\ExternalOrderCache;
 use App\Models\ReturnTicket;
 use App\Models\TicketStatusHistory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminTicketControllerTest extends TestCase
@@ -208,5 +210,31 @@ class AdminTicketControllerTest extends TestCase
             'new_status' => 'closed',
             'comment'    => 'Caso resuelto.',
         ]);
+    }
+
+    public function test_admin_can_preview_and_download_evidence_with_attachment_disposition(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->put('evidences/boleta.pdf', 'pdf-content');
+
+        $evidence = Evidence::create([
+            'ticket_id' => $this->ticket->ticket_id,
+            'file_path' => 'evidences/boleta.pdf',
+            'file_name' => 'boleta.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 2048,
+        ]);
+
+        $inlineResponse = $this->actingAs($this->admin)
+            ->get(route('admin.evidences.show', $evidence->evidence_id));
+
+        $inlineResponse->assertOk();
+        $this->assertStringContainsString('inline; filename="boleta.pdf"', (string) $inlineResponse->headers->get('Content-Disposition'));
+
+        $downloadResponse = $this->actingAs($this->admin)
+            ->get(route('admin.evidences.show', ['evidence' => $evidence->evidence_id, 'download' => 1]));
+
+        $downloadResponse->assertOk();
+        $this->assertStringContainsString('attachment; filename="boleta.pdf"', (string) $downloadResponse->headers->get('Content-Disposition'));
     }
 }

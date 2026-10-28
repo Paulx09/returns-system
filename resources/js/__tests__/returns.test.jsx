@@ -2,11 +2,12 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import Start from '../Pages/Returns/Start';
 import Dashboard from '../Pages/Returns/Dashboard';
 import Success from '../Pages/Returns/Success';
 import Tracking from '../Pages/Returns/Tracking';
+import AdminTicketIndex from '../Pages/Admin/Tickets/Index';
 import AdminTicketShow from '../Pages/Admin/Tickets/Show';
 
 vi.mock('@inertiajs/react', () => ({
@@ -14,6 +15,10 @@ vi.mock('@inertiajs/react', () => ({
     Link: ({ children, ...props }) => <a {...props}>{children}</a>,
     useForm: vi.fn(),
     usePage: () => ({ props: { flash: {} } }),
+    router: {
+        get: vi.fn(),
+        on: vi.fn(),
+    },
 }));
 
 afterEach(() => {
@@ -594,5 +599,80 @@ describe('Admin/Tickets/Show', () => {
 
         await user.type(commentInput, 'Producto fuera del plazo de garantía');
         expect(submitBtn).toBeEnabled();
+    });
+
+    it('opens interactive EvidenceModal lightbox with zoom, rotation, download, and Escape close (TC-ADM-04)', async () => {
+        const user = userEvent.setup();
+        const ticketWithEvidences = {
+            ...baseTicket,
+            evidences: [
+                { evidence_id: 'ev-img-1', file_name: 'foto_dano.jpg', mime_type: 'image/jpeg' },
+            ],
+        };
+
+        render(
+            <AdminTicketShow
+                ticket={ticketWithEvidences}
+                statuses={allStatuses}
+                allowed_transitions={['under_review', 'rejected']}
+                auth={{ user: { role: 'admin' } }}
+            />
+        );
+
+        await user.click(screen.getByRole('button', { name: /foto_dano\.jpg/i }));
+
+        const dialog = screen.getByRole('dialog', { name: /Visor de evidencia foto_dano\.jpg/i });
+        expect(dialog).toBeVisible();
+        expect(screen.getByText('100%')).toBeVisible();
+
+        await user.click(screen.getByRole('button', { name: 'Acercar imagen' }));
+        expect(screen.getByText('125%')).toBeVisible();
+
+        const downloadLink = screen.getByRole('link', { name: 'Descargar archivo' });
+        expect(downloadLink).toHaveAttribute('href', '/route/admin.evidences.show?download=1');
+
+        fireEvent.keyDown(window, { key: 'Escape' });
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+});
+
+describe('Admin/Tickets/Index', () => {
+    const allStatuses = ['received', 'under_review', 'approved', 'rejected', 'more_information_requested', 'closed'];
+    const paginatedTickets = {
+        total: 1,
+        data: [
+            {
+                ticket_id: 'tick-1',
+                tracking_code: 'RET-12345678',
+                current_status: 'received',
+                created_at: '2026-09-25T10:00:00Z',
+                order: { order_number: 'ORD-123456' },
+            },
+        ],
+        links: [],
+    };
+
+    beforeEach(() => {
+        router.get.mockReset();
+    });
+
+    it('reactively updates the ticket grid when status or date filters change without clicking Filtrar (TC-ADM-03)', async () => {
+        const user = userEvent.setup();
+        render(
+            <AdminTicketIndex
+                tickets={paginatedTickets}
+                filters={{ status: '', date_from: '', date_to: '' }}
+                statuses={allStatuses}
+            />
+        );
+
+        const statusSelect = screen.getByLabelText('Estado');
+        await user.selectOptions(statusSelect, 'under_review');
+
+        expect(router.get).toHaveBeenCalledWith(
+            '/route/admin.tickets.index',
+            { status: 'under_review', date_from: '', date_to: '' },
+            { preserveState: true, replace: true }
+        );
     });
 });
