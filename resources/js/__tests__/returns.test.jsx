@@ -127,6 +127,24 @@ describe('Returns/Start', () => {
         expect(screen.getByText('No se encontró el ticket.')).toBeVisible();
         expect(screen.getByText('El código es inválido.')).toBeVisible();
     });
+
+    it('blocks submission on client and displays error when DNI is not 8 numeric digits', async () => {
+        const user = userEvent.setup();
+        const form = configureForm({ order_number: '', customer_dni: '', tracking_code: '' });
+        render(<Start />);
+
+        const dniInput = screen.getByLabelText('DNI o CE del Comprador');
+        expect(dniInput).toHaveAttribute('pattern', '[0-9]{8}');
+        expect(dniInput).toHaveAttribute('maxLength', '8');
+        expect(dniInput).toHaveAttribute('inputMode', 'numeric');
+
+        await user.type(screen.getByLabelText('Número de Pedido'), 'ORD-123456');
+        await user.type(dniInput, '1234A');
+        await user.click(screen.getByRole('button', { name: 'Iniciar Solicitud' }));
+
+        expect(form.post).not.toHaveBeenCalled();
+        expect(screen.getByText('El DNI debe contener exactamente 8 dígitos numéricos.')).toBeVisible();
+    });
 });
 
 describe('Returns/Dashboard', () => {
