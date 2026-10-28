@@ -367,4 +367,59 @@ class TicketTrackingAndLifecycleTest extends TestCase
             'file_name' => 'no_permitido.jpg',
         ]);
     }
+
+    public function test_dashboard_redirects_to_tracking_when_active_ticket_exists_in_database(): void
+    {
+        ReturnTicket::create([
+            'order_id' => $this->order->order_id,
+            'tracking_code' => 'RET-DB-ACTIVE',
+            'current_status' => 'received',
+        ]);
+
+        $response = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+            'has_active_ticket' => false,
+        ])->get(route('returns.dashboard'));
+
+        $response->assertRedirect(route('returns.tracking'));
+        $this->assertTrue(session('has_active_ticket'));
+    }
+
+    public function test_custom_403_and_404_error_pages_render_corporate_branding(): void
+    {
+        $otherOrder = ExternalOrderCache::factory()->create([
+            'order_number' => 'ORD-OTHER-403',
+            'customer_dni' => '99887766',
+        ]);
+        $otherTicket = ReturnTicket::create([
+            'order_id' => $otherOrder->order_id,
+            'tracking_code' => 'RET-OTHER403',
+            'current_status' => 'under_review',
+        ]);
+        $otherEvidence = Evidence::create([
+            'ticket_id' => $otherTicket->ticket_id,
+            'file_path' => 'evidences/private.jpg',
+            'file_name' => 'private.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1024,
+        ]);
+
+        $forbiddenResponse = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+        ])->get(route('returns.evidences.show', $otherEvidence->evidence_id));
+
+        $forbiddenResponse->assertForbidden();
+        $forbiddenResponse->assertSee('Acceso no autorizado');
+        $forbiddenResponse->assertSee('Volver al inicio');
+
+        $notFoundResponse = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+        ])->get('/returns/evidences/00000000-0000-0000-0000-000000000000');
+
+        $notFoundResponse->assertNotFound();
+        $notFoundResponse->assertSee('Página o recurso no encontrado');
+        $notFoundResponse->assertSee('Volver al inicio');
+        $notFoundResponse->assertDontSee('No query results for model');
+        $notFoundResponse->assertDontSee('App\\Models\\');
+    }
 }

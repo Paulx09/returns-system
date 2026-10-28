@@ -87,7 +87,7 @@ export default function Dashboard({ order, reasons }) {
         if (!canSubmit) {
             return;
         }
-        post(route('returns.tickets.store'));
+        post(route('returns.tickets.store'), { replace: true });
     };
 
     const canSubmit = data.items.length > 0

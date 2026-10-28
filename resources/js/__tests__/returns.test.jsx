@@ -226,7 +226,7 @@ describe('Returns/Dashboard', () => {
         await waitFor(() => expect(screen.getByRole('button', { name: 'Enviar Solicitud' })).toBeEnabled());
         await user.click(screen.getByRole('button', { name: 'Enviar Solicitud' }));
 
-        expect(form.post).toHaveBeenCalledWith('/route/returns.tickets.store');
+        expect(form.post).toHaveBeenCalledWith('/route/returns.tickets.store', { replace: true });
     });
 
     it.each([
@@ -499,104 +499,6 @@ describe('Returns/Tracking', () => {
         expect(screen.getByText('Debes adjuntar al menos un archivo.')).toBeVisible();
     });
 });
-
-describe('Admin/Tickets/Show', () => {
-    const allStatuses = ['received', 'under_review', 'approved', 'rejected', 'more_information_requested', 'closed'];
-    const baseTicket = {
-        ticket_id: 'tick-admin-1',
-        tracking_code: 'TL-2026-00999',
-        current_status: 'received',
-        created_at: '2026-09-25T10:00:00Z',
-        order: { order_number: 'ORD-123456', order_date: '2026-09-15' },
-        return_items: [],
-        evidences: [],
-        status_history: [],
-    };
-
-    beforeEach(() => {
-        configureForm();
-    });
-
-    it('filters status select options dynamically using allowed_transitions (TC-ADM-07)', () => {
-        render(
-            <AdminTicketShow
-                ticket={baseTicket}
-                statuses={allStatuses}
-                allowed_transitions={['under_review', 'rejected']}
-                auth={{ user: { role: 'admin' } }}
-            />
-        );
-
-        const select = screen.getByLabelText(/Nuevo estado/i);
-        const optionValues = Array.from(select.querySelectorAll('option')).map(o => o.value).filter(Boolean);
-
-        expect(optionValues).toEqual(['under_review', 'rejected']);
-        expect(optionValues).not.toContain('approved');
-        expect(optionValues).not.toContain('closed');
-    });
-
-    it('excludes closed option for non-admin support users and allows it for admin (TC-ADM-06)', () => {
-        const approvedTicket = { ...baseTicket, current_status: 'more_information_requested' };
-
-        const { unmount } = render(
-            <AdminTicketShow
-                ticket={approvedTicket}
-                statuses={allStatuses}
-                allowed_transitions={['under_review', 'closed']}
-                auth={{ user: { role: 'support' } }}
-            />
-        );
-
-        const supportOptions = Array.from(screen.getByLabelText(/Nuevo estado/i).querySelectorAll('option'))
-            .map(o => o.value)
-            .filter(Boolean);
-        expect(supportOptions).toEqual(['under_review']);
-        expect(supportOptions).not.toContain('closed');
-        expect(screen.getByText('Solo administradores pueden cerrar solicitudes.')).toBeVisible();
-
-        unmount();
-
-        render(
-            <AdminTicketShow
-                ticket={approvedTicket}
-                statuses={allStatuses}
-                allowed_transitions={['under_review', 'closed']}
-                auth={{ user: { role: 'admin' } }}
-            />
-        );
-
-        const adminOptions = Array.from(screen.getByLabelText(/Nuevo estado/i).querySelectorAll('option'))
-            .map(o => o.value)
-            .filter(Boolean);
-        expect(adminOptions).toEqual(['under_review', 'closed']);
-    });
-
-    it('disables submit button when rejected or more_information_requested is selected without a comment (TC-ADM-05)', async () => {
-        const user = userEvent.setup();
-        render(
-            <AdminTicketShow
-                ticket={baseTicket}
-                statuses={allStatuses}
-                allowed_transitions={['under_review', 'rejected']}
-                auth={{ user: { role: 'support' } }}
-            />
-        );
-
-        const select = screen.getByLabelText(/Nuevo estado/i);
-        const submitBtn = screen.getByRole('button', { name: 'Actualizar Estado' });
-
-        await user.selectOptions(select, 'rejected');
-        expect(submitBtn).toBeDisabled();
-
-        const commentInput = screen.getByLabelText(/Comentario/i);
-        await user.type(commentInput, '   ');
-        expect(submitBtn).toBeDisabled();
-
-        await user.type(commentInput, 'Producto fuera del plazo de garantía');
-        expect(submitBtn).toBeEnabled();
-    });
-});
-
 
 describe('Admin/Tickets/Show', () => {
     const allStatuses = ['received', 'under_review', 'approved', 'rejected', 'more_information_requested', 'closed'];
