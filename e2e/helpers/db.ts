@@ -16,10 +16,13 @@ export function cleanDatabase(): void {
   execSync(`php "${scriptPath}"`, { stdio: 'pipe' });
 }
 
-export function seedTicket(status: string = 'received'): SeededTicket {
-  cleanDatabase();
+export function seedTicket(status: string = 'received', keepExisting: boolean = false): SeededTicket {
+  if (!keepExisting) {
+    cleanDatabase();
+  }
   const scriptPath = path.join(rootDir, 'e2e/helpers/seed-ticket.php');
-  const output = execSync(`php "${scriptPath}" ${status}`, { encoding: 'utf-8' });
+  const keepFlag = keepExisting ? ' --keep' : '';
+  const output = execSync(`php "${scriptPath}" ${status}${keepFlag}`, { encoding: 'utf-8' });
   return JSON.parse(output.trim());
 }
 
