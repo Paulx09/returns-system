@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 
 const ALLOWED_TRANSITIONS = {
@@ -54,8 +55,158 @@ function SectionCard({ title, children, borderColorClass = "border-t-4 border-t-
     );
 }
 
+const ZOOM_CLASSES = {
+    75:  'scale-75',
+    100: 'scale-100',
+    125: 'scale-125',
+    150: 'scale-150',
+};
+
+const ROTATION_CLASSES = {
+    0:   'rotate-0',
+    90:  'rotate-90',
+    180: 'rotate-180',
+    270: '-rotate-90',
+};
+
+function isPdfEvidence(evidence) {
+    const mime = String(evidence?.mime_type ?? '').toLowerCase();
+    const name = String(evidence?.file_name ?? '').toLowerCase();
+    return mime === 'application/pdf' || name.endsWith('.pdf');
+}
+
+function EvidenceModal({ evidence, onClose }) {
+    const [zoomLevel, setZoomLevel] = useState(100);
+    const [rotation, setRotation] = useState(0);
+
+    useEffect(() => {
+        if (!evidence) return undefined;
+        setZoomLevel(100);
+        setRotation(0);
+
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [evidence, onClose]);
+
+    if (!evidence) return null;
+
+    const evidenceId = evidence.evidence_id ?? evidence.id;
+    const inlineUrl = route('admin.evidences.show', evidenceId);
+    const downloadUrl = `${inlineUrl}${inlineUrl.includes('?') ? '&' : '?'}download=1`;
+    const isPdf = isPdfEvidence(evidence);
+
+    const zoomIn = () => setZoomLevel(prev => (prev < 150 ? prev + 25 : 150));
+    const zoomOut = () => setZoomLevel(prev => (prev > 75 ? prev - 25 : 75));
+    const rotateRight = () => setRotation(prev => (prev + 90) % 360);
+    const resetTransform = () => {
+        setZoomLevel(100);
+        setRotation(0);
+    };
+
+    return (
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Visor de evidencia ${evidence.file_name}`}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4"
+            onClick={onClose}
+        >
+            <div
+                className="bg-white rounded-xl shadow-2xl max-w-4xl w-full overflow-hidden border-t-4 border-t-[#fbdb04] flex flex-col max-h-[90vh]"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-gray-900 truncate">{evidence.file_name}</h3>
+                        <p className="text-xs text-gray-500">{isPdf ? 'Documento PDF' : 'Imagen de evidencia'}</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        {!isPdf && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={zoomOut}
+                                    aria-label="Alejar imagen"
+                                    className="px-2.5 py-1.5 text-xs font-semibold bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+                                >
+                                    - Zoom
+                                </button>
+                                <span className="text-xs font-mono text-gray-600 px-1">{zoomLevel}%</span>
+                                <button
+                                    type="button"
+                                    onClick={zoomIn}
+                                    aria-label="Acercar imagen"
+                                    className="px-2.5 py-1.5 text-xs font-semibold bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+                                >
+                                    + Zoom
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={rotateRight}
+                                    aria-label="Rotar imagen"
+                                    className="px-2.5 py-1.5 text-xs font-semibold bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+                                >
+                                    Rotar 90°
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={resetTransform}
+                                    aria-label="Restablecer vista"
+                                    className="px-2.5 py-1.5 text-xs font-semibold bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+                                >
+                                    Restablecer
+                                </button>
+                            </>
+                        )}
+
+                        <a
+                            href={downloadUrl}
+                            download={evidence.file_name}
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-md text-[#002E6E] bg-[#fbdb04] hover:bg-[#05a060] hover:text-white transition-colors"
+                        >
+                            Descargar archivo
+                        </a>
+
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            aria-label="Cerrar visor"
+                            className="px-3 py-1.5 text-xs font-semibold bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+
+                <div className="p-6 bg-gray-900/95 flex-grow overflow-auto flex items-center justify-center min-h-[360px]">
+                    {isPdf ? (
+                        <iframe
+                            src={inlineUrl}
+                            title={evidence.file_name}
+                            className="w-full h-[65vh] rounded bg-white border border-gray-300"
+                        />
+                    ) : (
+                        <img
+                            src={inlineUrl}
+                            alt={evidence.file_name}
+                            className={`max-h-[65vh] max-w-full object-contain transition-transform duration-200 transform ${ZOOM_CLASSES[zoomLevel] ?? 'scale-100'} ${ROTATION_CLASSES[rotation] ?? 'rotate-0'}`}
+                        />
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function Show({ ticket, statuses = [], allowed_transitions, auth }) {
     const commentRequired = ['rejected', 'more_information_requested'];
+    const [selectedEvidence, setSelectedEvidence] = useState(null);
     const page = typeof usePage === 'function' ? usePage() : null;
     const currentUser = auth?.user ?? page?.props?.auth?.user;
     const isAdmin = currentUser?.role === 'admin';
@@ -207,19 +358,31 @@ export default function Show({ ticket, statuses = [], allowed_transitions, auth 
                         <SectionCard title="Evidencias">
                             {ticket.evidences?.length > 0 ? (
                                 <ul className="space-y-2">
-                                    {ticket.evidences.map(ev => (
-                                        <li key={ev.evidence_id ?? ev.id}>
-                                            <a
-                                                href={route('admin.evidences.show', ev.evidence_id ?? ev.id)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-2 text-sm text-[#05a060] hover:text-[#04854f] hover:underline"
-                                            >
-                                                <span className="text-lg">📎</span>
-                                                <span className="truncate">{ev.file_name}</span>
-                                            </a>
-                                        </li>
-                                    ))}
+                                    {ticket.evidences.map(ev => {
+                                        const evId = ev.evidence_id ?? ev.id;
+                                        const inlineUrl = route('admin.evidences.show', evId);
+                                        const downloadUrl = `${inlineUrl}${inlineUrl.includes('?') ? '&' : '?'}download=1`;
+                                        return (
+                                            <li key={evId} className="flex items-center justify-between gap-2 p-2 rounded-md border border-gray-100 bg-gray-50 hover:bg-gray-100 transition">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedEvidence(ev)}
+                                                    className="flex items-center gap-2 text-sm text-[#05a060] hover:text-[#04854f] hover:underline font-medium min-w-0 text-left"
+                                                >
+                                                    <span className="text-lg">📎</span>
+                                                    <span className="truncate">{ev.file_name}</span>
+                                                </button>
+                                                <a
+                                                    href={downloadUrl}
+                                                    download={ev.file_name}
+                                                    aria-label={`Descargar ${ev.file_name}`}
+                                                    className="shrink-0 text-xs font-semibold text-[#002E6E] hover:underline px-2 py-1 rounded bg-[#fbdb04]/40 hover:bg-[#fbdb04]"
+                                                >
+                                                    Descargar
+                                                </a>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             ) : (
                                 <p className="text-sm text-gray-500">Sin evidencias adjuntas.</p>
@@ -318,6 +481,11 @@ export default function Show({ ticket, statuses = [], allowed_transitions, auth 
                     </div>
                 </div>
             </main>
+
+            <EvidenceModal
+                evidence={selectedEvidence}
+                onClose={() => setSelectedEvidence(null)}
+            />
         </div>
     );
 }
