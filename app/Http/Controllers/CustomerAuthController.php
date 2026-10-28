@@ -28,12 +28,16 @@ class CustomerAuthController extends Controller
     {
         $request->validate([
             'order_number' => 'required|string',
-            'customer_dni' => 'required|string',
+            'customer_dni' => 'required|digits:8',
+        ], [
+            'order_number.required' => 'El número de pedido es obligatorio.',
+            'customer_dni.required' => 'El DNI es obligatorio.',
+            'customer_dni.digits'   => 'El DNI debe contener exactamente 8 dígitos numéricos.',
         ]);
 
         $order = $this->orderService->findOrder(
-            $request->input('order_number'),
-            $request->input('customer_dni')
+            trim((string) $request->input('order_number')),
+            trim((string) $request->input('customer_dni'))
         );
 
         if (!$order) {
@@ -59,7 +63,8 @@ class CustomerAuthController extends Controller
         $request->session()->regenerate();
 
         if ($activeTicket) {
-            return redirect()->route('returns.tracking');
+            return redirect()->route('returns.tracking')
+                ->with('info', 'Este pedido ya cuenta con una solicitud de devolución en trámite.');
         }
 
         return redirect()->route('returns.dashboard');
@@ -69,7 +74,11 @@ class CustomerAuthController extends Controller
     {
         $request->validate([
             'tracking_code' => 'required|string',
-            'customer_dni' => 'required|string',
+            'customer_dni'  => 'required|digits:8',
+        ], [
+            'tracking_code.required' => 'El código de seguimiento es obligatorio.',
+            'customer_dni.required'  => 'El DNI es obligatorio.',
+            'customer_dni.digits'    => 'El DNI debe contener exactamente 8 dígitos numéricos.',
         ]);
 
         $ticket = ReturnTicket::with('order')

@@ -22,3 +22,7 @@ export function seedTicket(status: string = 'received'): SeededTicket {
   const output = execSync(`php "${scriptPath}" ${status}`, { encoding: 'utf-8' });
   return JSON.parse(output.trim());
 }
+
+export function seedActiveOrderFixture(): void {
+  execSync('php artisan db:seed --class=ExternalOrderCacheSeeder', { cwd: rootDir, stdio: 'pipe' });
+}

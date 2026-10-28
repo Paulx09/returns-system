@@ -6,6 +6,7 @@ use App\Models\Evidence;
 use App\Models\ExternalOrderCache;
 use App\Models\OrderItem;
 use App\Models\ReturnItem;
+use App\Models\ReturnReason;
 use App\Models\ReturnTicket;
 use App\Models\TicketStatusHistory;
 use Illuminate\Database\Seeder;
@@ -105,5 +106,72 @@ class ExternalOrderCacheSeeder extends Seeder
 
         ReturnItem::whereIn('order_item_id', $expiredOrderItemIds)->forceDelete();
         OrderItem::whereIn('order_item_id', $expiredOrderItemIds)->forceDelete();
+
+        // 3. Orden con ticket activo en curso para pruebas de redirección y tracking (ORD-ACTIVE-01)
+        $activeOrder = ExternalOrderCache::updateOrCreate(
+            ['order_number' => 'ORD-ACTIVE-01'],
+            [
+                'customer_full_name' => 'Cliente Trámite Activo',
+                'customer_dni' => '12345678',
+                'customer_email' => 'cliente.activo@example.com',
+                'order_date' => now()->subDays(1),
+            ]
+        );
+
+        $activeOrderItemIds = OrderItem::where('order_id', $activeOrder->order_id)->pluck('order_item_id');
+        $activeTicketIds = ReturnTicket::withTrashed()
+            ->where('order_id', $activeOrder->order_id)
+            ->orWhere('tracking_code', 'RET-12345678')
+            ->pluck('ticket_id')
+            ->merge(ReturnItem::whereIn('order_item_id', $activeOrderItemIds)->pluck('ticket_id'))
+            ->unique()
+            ->filter();
+
+        if ($activeTicketIds->isNotEmpty()) {
+            TicketStatusHistory::whereIn('ticket_id', $activeTicketIds)->forceDelete();
+            Evidence::whereIn('ticket_id', $activeTicketIds)->forceDelete();
+            ReturnItem::whereIn('ticket_id', $activeTicketIds)->forceDelete();
+            ReturnTicket::withTrashed()->whereIn('ticket_id', $activeTicketIds)->forceDelete();
+        }
+
+        ReturnItem::whereIn('order_item_id', $activeOrderItemIds)->forceDelete();
+        OrderItem::whereIn('order_item_id', $activeOrderItemIds)->forceDelete();
+
+        $activeOrderItem = OrderItem::create([
+            'order_id' => $activeOrder->order_id,
+            'product_name' => 'Calculadora Científica Casio FX-991LAX',
+            'product_code' => 'CAL-CAS-991',
+            'quantity' => 1,
+            'unit_price' => 129.90,
+        ]);
+
+        $defaultReason = ReturnReason::first() ?? ReturnReason::create([
+            'reason_id' => '01a11f3f-79f9-7386-9097-067c1476944e',
+            'name' => 'Producto Dañado',
+            'description' => 'El producto llegó con daños físicos o de fábrica.',
+        ]);
+
+        $activeTicket = ReturnTicket::create([
+            'order_id' => $activeOrder->order_id,
+            'tracking_code' => 'RET-12345678',
+            'current_status' => 'received',
+            'customer_comment' => 'La pantalla presenta líneas defectuosas al encender.',
+        ]);
+
+        ReturnItem::create([
+            'ticket_id' => $activeTicket->ticket_id,
+            'order_item_id' => $activeOrderItem->order_item_id,
+            'reason_id' => $defaultReason->reason_id,
+            'quantity_to_return' => 1,
+            'condition' => 'damaged',
+        ]);
+
+        TicketStatusHistory::create([
+            'ticket_id' => $activeTicket->ticket_id,
+            'old_status' => null,
+            'new_status' => 'received',
+            'changed_by_user_id' => null,
+            'comment' => 'Solicitud de devolución registrada en el portal.',
+        ]);
     }
 }

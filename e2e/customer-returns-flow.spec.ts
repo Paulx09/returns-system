@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { cleanDatabase, seedTicket } from './helpers/db';
+import { cleanDatabase, seedTicket, seedActiveOrderFixture } from './helpers/db';
 
 test.describe('Flujo de Devoluciones del Cliente (HU-01 a HU-06)', () => {
   test.beforeEach(() => {
@@ -121,5 +121,43 @@ test.describe('Flujo de Devoluciones del Cliente (HU-01 a HU-06)', () => {
     if (!isMobile) {
       await expect(page.getByText('Solicitud enviada').first()).toBeVisible();
     }
+  });
+
+  test('Escenario 4 (TC-CLI-04): Validación estricta de formato de DNI (8 dígitos numéricos) en la UI', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.goto('/returns/start');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByLabel('Número de Pedido').fill('ORD-123456');
+    await page.getByLabel('DNI o CE del Comprador').fill('1234A');
+    await page.getByRole('button', { name: 'Iniciar Solicitud' }).click();
+
+    await expect(
+      page.getByText('El DNI debe contener exactamente 8 dígitos numéricos.')
+    ).toBeVisible();
+    expect(page.url()).toContain('/returns/start');
+  });
+
+  test('Escenario 5 (TC-CLI-03): Redirección automática a /returns/tracking ante pedido con trámite activo (ORD-ACTIVE-01)', async ({ page }) => {
+    test.setTimeout(90000);
+    seedActiveOrderFixture();
+
+    await page.goto('/returns/start');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByLabel('Número de Pedido').fill('ORD-ACTIVE-01');
+    await page.getByLabel('DNI o CE del Comprador').fill('12345678');
+
+    await Promise.all([
+      page.waitForResponse((resp) => resp.url().includes('/returns/login') && resp.status() === 302),
+      page.getByRole('button', { name: 'Iniciar Solicitud' }).click(),
+    ]);
+
+    await expect(page).toHaveURL(/.*\/returns\/tracking/, { timeout: 15000 });
+    await expect(
+      page.getByText(/Este pedido ya cuenta con una solicitud de devolución en trámite/i)
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'RET-12345678' })).toBeVisible();
+    await expect(page.getByText('Recibido').first()).toBeVisible();
   });
 });

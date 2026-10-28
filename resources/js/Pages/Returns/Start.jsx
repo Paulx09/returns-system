@@ -3,14 +3,23 @@ import { useForm, Head, Link } from '@inertiajs/react';
 
 export default function Start() {
     const [mode, setMode] = useState('order'); // 'order' | 'tracking'
+    const [clientDniError, setClientDniError] = useState(null);
     const { data, setData, post, processing, errors } = useForm({
         order_number: '',
         customer_dni: '',
         tracking_code: '',
     });
 
+    const dniError = clientDniError || errors.customer_dni;
+
     const submit = (e) => {
         e.preventDefault();
+        const trimmedDni = String(data.customer_dni ?? '').trim();
+        if (!/^[0-9]{8}$/.test(trimmedDni)) {
+            setClientDniError('El DNI debe contener exactamente 8 dígitos numéricos.');
+            return;
+        }
+        setClientDniError(null);
         if (mode === 'tracking') {
             post(route('returns.track-by-code'));
         } else {
@@ -136,17 +145,25 @@ export default function Start() {
                                 id="customer_dni"
                                 type="text"
                                 name="customer_dni"
+                                inputMode="numeric"
+                                pattern="[0-9]{8}"
+                                maxLength={8}
                                 value={data.customer_dni}
                                 className="mt-2 block w-full border-gray-300 focus:border-[#05a060] focus:ring-[#05a060] rounded-lg shadow-sm"
-                                onChange={(e) => setData('customer_dni', e.target.value)}
+                                onChange={(e) => {
+                                    setData('customer_dni', e.target.value);
+                                    if (clientDniError) {
+                                        setClientDniError(null);
+                                    }
+                                }}
                                 required
-                                aria-invalid={errors.customer_dni ? 'true' : 'false'}
-                                aria-describedby={errors.customer_dni ? 'error-customer_dni' : undefined}
-                                placeholder="Documento de Identidad"
+                                aria-invalid={dniError ? 'true' : 'false'}
+                                aria-describedby={dniError ? 'error-customer_dni' : undefined}
+                                placeholder="8 dígitos numéricos"
                             />
-                            {errors.customer_dni && (
+                            {dniError && (
                                 <div id="error-customer_dni" role="alert" className="mt-2 text-sm text-red-600 font-medium">
-                                    {errors.customer_dni}
+                                    {dniError}
                                 </div>
                             )}
                         </div>
