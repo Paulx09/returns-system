@@ -211,6 +211,10 @@ class EvidenceUploadTest extends TestCase
             $this->assertCount(1, Storage::disk('local')->allFiles('evidences'));
         } else {
             $response->assertSessionHasErrors(['evidences.0']);
+            $this->assertSame(
+                'Cada archivo de evidencia no debe superar los 5 MB.',
+                session('errors')->get('evidences.0')[0]
+            );
             // Invariants: 0 side-effects
             $this->assertSame(0, ReturnTicket::count());
             $this->assertSame(0, Evidence::count());
@@ -245,6 +249,10 @@ class EvidenceUploadTest extends TestCase
 
         // Assert
         $response->assertSessionHasErrors(['evidences.0']);
+        $this->assertSame(
+            'Las evidencias deben ser archivos con formato JPG, PNG o PDF.',
+            session('errors')->get('evidences.0')[0]
+        );
 
         // Invariants: zero side effects
         $this->assertSame(0, ReturnTicket::count());

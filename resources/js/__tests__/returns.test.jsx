@@ -306,6 +306,48 @@ describe('Returns/Dashboard', () => {
         expect(conditionSelect).toHaveAttribute('aria-invalid', 'true');
         expect(conditionSelect).toHaveAttribute('aria-describedby', 'error-condition-item-1');
     });
+
+    it('immediately rejects files larger than 5MB and disables Enviar Solicitud button', async () => {
+        const user = userEvent.setup();
+        configureForm({ items: [], customer_notes: '', evidences: [] });
+        render(<Dashboard order={order} reasons={reasons} />);
+
+        await user.click(screen.getByRole('checkbox', { name: /Cuaderno/ }));
+        await user.selectOptions(screen.getByRole('combobox', { name: 'Motivo' }), 'reason-1');
+
+        const oversizedFile = new File(['x'], 'heavy_photo.jpg', { type: 'image/jpeg' });
+        Object.defineProperty(oversizedFile, 'size', { value: 8 * 1024 * 1024 });
+
+        fireEvent.change(screen.getByLabelText('Fotos o Documentos de Evidencia'), {
+            target: { files: [oversizedFile] },
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('Cada archivo de evidencia no debe superar los 5 MB.')).toBeVisible();
+            expect(screen.getByText('Excede el límite de 5 MB')).toBeVisible();
+            expect(screen.getByRole('button', { name: 'Enviar Solicitud' })).toBeDisabled();
+        });
+    });
+
+    it('immediately rejects disallowed file extensions (.zip/.exe) and disables Enviar Solicitud button', async () => {
+        const user = userEvent.setup();
+        configureForm({ items: [], customer_notes: '', evidences: [] });
+        render(<Dashboard order={order} reasons={reasons} />);
+
+        await user.click(screen.getByRole('checkbox', { name: /Cuaderno/ }));
+        await user.selectOptions(screen.getByRole('combobox', { name: 'Motivo' }), 'reason-1');
+
+        const zipFile = new File(['zip-content'], 'archivo.zip', { type: 'application/zip' });
+        fireEvent.change(screen.getByLabelText('Fotos o Documentos de Evidencia'), {
+            target: { files: [zipFile] },
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('Las evidencias deben ser archivos con formato JPG, PNG o PDF.')).toBeVisible();
+            expect(screen.getByText('Formato no permitido (solo JPG, PNG o PDF)')).toBeVisible();
+            expect(screen.getByRole('button', { name: 'Enviar Solicitud' })).toBeDisabled();
+        });
+    });
 });
 
 describe('Returns/Success', () => {
