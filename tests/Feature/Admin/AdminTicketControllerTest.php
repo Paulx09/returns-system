@@ -78,7 +78,11 @@ class AdminTicketControllerTest extends TestCase
             ->get("/admin/tickets/{$this->ticket->ticket_id}");
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => $page->component('Admin/Tickets/Show'));
+        $response->assertInertia(fn ($page) => $page
+            ->component('Admin/Tickets/Show')
+            ->where('allowed_transitions', ['under_review', 'rejected'])
+            ->where('ticket.allowed_transitions', ['under_review', 'rejected'])
+        );
     }
 
     // ── Scenario 2: Cambio de estado registra historial ──────────────────────

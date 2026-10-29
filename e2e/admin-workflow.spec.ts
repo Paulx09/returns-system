@@ -61,7 +61,20 @@ test.describe('Backoffice Administrativo y Gobernanza RBAC (HU-08 a HU-12)', () 
     await expect(page).toHaveURL(new RegExp(`/admin/tickets/${ticket.ticket_id}`));
     await expect(page.getByText(ticket.tracking_code).first()).toBeVisible();
 
-    // El operador intenta cambiar el estado a 'closed' (Cerrado)
+    // Gobernanza RBAC reactiva en UI: la opción 'closed' no se muestra al operador
+    await expect(page.locator('#new-status option[value="closed"]')).toHaveCount(0);
+    await expect(page.getByText('Solo administradores pueden cerrar solicitudes.')).toBeVisible();
+
+    // Si el operador fuerza el valor 'closed' en el DOM, el backend responde con 403 Forbidden
+    await page.evaluate(() => {
+      const select = document.querySelector('#new-status');
+      if (select) {
+        const opt = document.createElement('option');
+        opt.value = 'closed';
+        opt.textContent = 'Cerrado';
+        select.appendChild(opt);
+      }
+    });
     await page.getByLabel(/Nuevo estado/i).selectOption('closed');
 
     const [forbiddenResponse] = await Promise.all([
