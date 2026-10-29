@@ -93,6 +93,10 @@ test.describe('Flujo de Devoluciones del Cliente (HU-01 a HU-06)', () => {
     await expect(trackingCodeElement).toBeVisible();
     const trackingCodeText = (await trackingCodeElement.textContent())?.trim();
     expect(trackingCodeText).toMatch(/^RET-[A-Z0-9]{8}$/);
+
+    // ── Paso 5 (TC-EXP-01): Resiliencia ante botón Atrás del navegador ──
+    await page.goBack();
+    await expect(page).not.toHaveURL(/.*\/returns\/dashboard/);
   });
 
   test('Escenario 3 (HU-06): Consulta de Tracking Público y verificación de estado "received"', async ({ page, isMobile }) => {
@@ -159,5 +163,49 @@ test.describe('Flujo de Devoluciones del Cliente (HU-01 a HU-06)', () => {
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: 'RET-12345678' })).toBeVisible();
     await expect(page.getByText('Recibido').first()).toBeVisible();
+  });
+
+  test('Escenario 6 (TC-CLI-08): Validación reactiva en UI ante archivo > 5 MB y formato no permitido', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.goto('/returns/start');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByLabel('Número de Pedido').fill('ORD-123456');
+    await page.getByLabel('DNI o CE del Comprador').fill('12345678');
+
+    await Promise.all([
+      page.waitForResponse((resp) => resp.url().includes('/returns/login') && resp.status() === 302),
+      page.getByRole('button', { name: 'Iniciar Solicitud' }).click(),
+    ]);
+
+    await expect(page).toHaveURL(/.*\/returns\/dashboard/, { timeout: 15000 });
+
+    // Seleccionar producto y motivo
+    await page.getByRole('checkbox').first().check();
+    await page.getByLabel(/Motivo/i).first().selectOption({ index: 1 });
+
+    const fileInput = page.getByLabel(/Fotos o Documentos de Evidencia/i);
+    const submitButton = page.getByRole('button', { name: 'Enviar Solicitud' });
+
+    // 1. Adjuntar archivo con extensión inválida (.zip) y archivo que supera 5 MB
+    await fileInput.setInputFiles([
+      {
+        name: 'malware_payload.zip',
+        mimeType: 'application/zip',
+        buffer: Buffer.from('PK\x03\x04fake-zip-content'),
+      },
+      {
+        name: 'evidencia_pesada.jpg',
+        mimeType: 'image/jpeg',
+        buffer: Buffer.alloc(6 * 1024 * 1024, 0),
+      },
+    ]);
+
+    // Verificar alertas reactivas en UI y bloqueo del botón de envío
+    await expect(page.getByText('Formato no permitido (solo JPG, PNG o PDF)')).toBeVisible();
+    await expect(page.getByText('Excede el límite de 5 MB')).toBeVisible();
+    await expect(page.getByText('Cada archivo de evidencia no debe superar los 5 MB.')).toBeVisible();
+    await expect(page.getByText('Las evidencias deben ser archivos con formato JPG, PNG o PDF.')).toBeVisible();
+    await expect(submitButton).toBeDisabled();
   });
 });

@@ -10,8 +10,10 @@ use App\Models\TicketStatusHistory;
 use App\Models\ExternalOrderCache;
 use App\Models\ReturnReason;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 
 $targetStatus = $argv[1] ?? 'received';
+$skipClean = ($argv[2] ?? '') === '--keep';
 
 $order = ExternalOrderCache::where('order_number', 'ORD-123456')->firstOrFail();
 $reason = ReturnReason::firstOrFail();
@@ -33,6 +35,13 @@ if ($orderItem) {
         'quantity_to_return' => 1,
         'condition' => 'opened',
     ]);
+}
+
+$sampleFixturePath = __DIR__ . '/../../postman/fixtures/sample_evidence.jpg';
+if (file_exists($sampleFixturePath)) {
+    Storage::disk('local')->put('evidences/sample.jpg', (string) file_get_contents($sampleFixturePath));
+} else {
+    Storage::disk('local')->put('evidences/sample.jpg', 'fake-image-binary-content');
 }
 
 Evidence::create([

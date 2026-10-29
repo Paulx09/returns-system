@@ -29,28 +29,28 @@ Especificación de Casos de Prueba (Test Cases) para el Sistema de Control y Seg
 
 | ID Caso | Historia Jira | Requerimiento / Funcionalidad | Tipo | Nivel Automatizado | Archivo Automatizado Asociado | Estado Manual |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **TC-CLI-01** | HU-01 | Autenticación con pedido vigente (≤ 7 días) | Funcional | Automatizado | `tests/Feature/Returns/CustomerAuthenticationTest.php`<br>`e2e/customer-returns-flow.spec.ts` | `[ ]` |
-| **TC-CLI-02** | HU-01 | Bloqueo por pedido fuera de plazo (> 7 días) | Negativa | Automatizado | `tests/Feature/Returns/CustomerAuthenticationTest.php`<br>`postman/returns-api.collection.json` | `[ ]` |
-| **TC-CLI-03** | HU-01 | Redirección de pedido con ticket activo en curso | Negativa | Automatizado | `tests/Feature/Returns/CustomerAuthenticationTest.php` | `[ ]` |
-| **TC-CLI-04** | HU-01 | Validación de formato de DNI (8 dígitos) y pedido inexistente | Negativa | Automatizado | `tests/Feature/Returns/CustomerAuthenticationTest.php` | `[ ]` |
-| **TC-CLI-05** | HU-02 | Fallback de consulta ante caída de API externa (Caché local) | Resiliencia | Automatizado | `tests/Feature/Services/ExternalOrderServiceTest.php` | `[ ]` |
-| **TC-CLI-06** | HU-03 | Selección de ítems, condición física y motivo de devolución | Funcional | Automatizado | `e2e/customer-returns-flow.spec.ts` | `[ ]` |
-| **TC-CLI-07** | HU-04 | Carga de evidencias válidas (1 a 5 archivos JPG/PNG/PDF ≤ 5MB) | Funcional | Automatizado | `tests/Feature/Returns/EvidenceUploadTest.php`<br>`e2e/customer-returns-flow.spec.ts` | `[ ]` |
-| **TC-CLI-08** | HU-04 | Rechazo de archivo que excede 5 MB o extensión prohibida | Negativa | Automatizado | `tests/Feature/Returns/EvidenceUploadTest.php` | `[ ]` |
-| **TC-CLI-09** | HU-04 | Bloqueo por validación MIME (archivo ejecutable renombrado) | Seguridad | Automatizado | `tests/Feature/Returns/EvidenceUploadTest.php` | `[ ]` |
-| **TC-CLI-10** | HU-05 | Generación de Tracking Code (`RET-XXXXXXXX`) y estado `received` | Funcional | Automatizado | `tests/Feature/Returns/ReturnTicketSubmissionTest.php`<br>`e2e/customer-returns-flow.spec.ts` | `[ ]` |
-| **TC-CLI-11** | HU-05 | Prevención de doble envío por clic repetitivo (Doble Submit) | Destructiva | Manual | N/A (Inspección de UI / Network) | `[ ]` |
-| **TC-TRK-01** | HU-06 | Consulta pública de estado mediante Tracking Code y DNI | Funcional | Automatizado | `tests/Feature/Returns/TicketTrackingAndLifecycleTest.php`<br>`postman/returns-api.collection.json` | `[X]` |
+| **TC-CLI-01** | HU-01 | Autenticación con pedido vigente (≤ 7 días) | Funcional | Automatizado | `tests/Feature/Returns/CustomerAuthenticationTest.php`<br>`e2e/customer-returns-flow.spec.ts` | `[X]` |
+| **TC-CLI-02** | HU-01 | Bloqueo por pedido fuera de plazo (> 7 días) | Negativa | Automatizado | `tests/Feature/Returns/CustomerAuthenticationTest.php`<br>`e2e/customer-returns-flow.spec.ts`<br>`postman/returns-api.collection.json` | `[X]` |
+| **TC-CLI-03** | HU-01 | Redirección de pedido con ticket activo en curso | Negativa | Automatizado | `tests/Feature/Returns/CustomerAuthenticationTest.php`<br>`e2e/customer-returns-flow.spec.ts` | `[X]` |
+| **TC-CLI-04** | HU-01 | Validación de formato de DNI (8 dígitos) y pedido inexistente | Negativa | Automatizado | `tests/Feature/Returns/CustomerAuthenticationTest.php`<br>`e2e/customer-returns-flow.spec.ts` | `[X]` |
+| **TC-CLI-05** | HU-02 | Fallback de consulta ante caída de API externa (Caché local) | Resiliencia | Automatizado | `tests/Feature/Services/ExternalOrderServiceTest.php` | `[X]` |
+| **TC-CLI-06** | HU-03 | Selección de ítems, condición física y motivo de devolución | Funcional | Automatizado | `e2e/customer-returns-flow.spec.ts` | `[X]` |
+| **TC-CLI-07** | HU-04 | Carga de evidencias válidas (1 a 5 archivos JPG/PNG/PDF ≤ 5MB) | Funcional | Automatizado | `tests/Feature/Returns/EvidenceUploadTest.php`<br>`e2e/customer-returns-flow.spec.ts` | `[X]` |
+| **TC-CLI-08** | HU-04 | Rechazo de archivo que excede 5 MB o extensión prohibida | Negativa | Automatizado | `tests/Feature/Returns/EvidenceUploadTest.php`<br>`e2e/customer-returns-flow.spec.ts` | `[X]` |
+| **TC-CLI-09** | HU-04 | Bloqueo por validación MIME (archivo ejecutable renombrado) | Seguridad | Automatizado | `tests/Feature/Returns/EvidenceUploadTest.php` | `[X]` |
+| **TC-CLI-10** | HU-05 | Generación de Tracking Code (`RET-XXXXXXXX`) y estado `received` | Funcional | Automatizado | `tests/Feature/Returns/ReturnTicketSubmissionTest.php`<br>`e2e/customer-returns-flow.spec.ts` | `[X]` |
+| **TC-CLI-11** | HU-05 | Prevención de doble envío por clic repetitivo (Doble Submit) | Destructiva | Manual | N/A (Inspección de UI / Network) | `[X]` |
+| **TC-TRK-01** | HU-06 | Consulta pública de estado mediante Tracking Code y DNI | Funcional | Automatizado | `tests/Feature/Returns/TicketTrackingAndLifecycleTest.php`<br>`e2e/customer-returns-flow.spec.ts`<br>`postman/returns-api.collection.json` | `[X]` |
 | **TC-TRK-02** | HU-06 | Consulta pública con DNI erróneo o Tracking Code inválido (404) | Negativa | Automatizado | `tests/Feature/Returns/TicketTrackingAndLifecycleTest.php` | `[X]` |
-| **TC-NOT-01** | HU-07 | Emisión de correo ante transición de estado | Funcional | Automatizado | `tests/Feature/Returns/TicketTrackingAndLifecycleTest.php` | `[ ]` |
+| **TC-NOT-01** | HU-07 | Emisión de correo ante transición de estado | Funcional | Automatizado | `tests/Feature/Returns/TicketTrackingAndLifecycleTest.php` | `[X]` |
 | **TC-ADM-01** | HU-08 | Autenticación interna con roles (`operator` vs `admin`) | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[X]` |
 | **TC-ADM-02** | HU-08 | Bloqueo de acceso no autenticado a panel administrativo (401/403) | Seguridad | Automatizado | `tests/Feature/Middleware/AdminMiddlewareTest.php` | `[X]` |
 | **TC-ADM-03** | HU-09 | Filtrado por estado y paginación reactiva en bandeja | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[X]` |
-| **TC-ADM-04** | HU-10 | Visualización y descarga segura de evidencias adjuntas | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php` | `[X]` |
-| **TC-ADM-05** | HU-11 | Transición de estado con justificación obligatoria en rechazo/info | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketLifecycleTransitionTest.php` | `[X]` |
+| **TC-ADM-04** | HU-10 | Visualización y descarga segura de evidencias adjuntas | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[X]` |
+| **TC-ADM-05** | HU-11 | Transición de estado con justificación obligatoria en rechazo/info | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketLifecycleTransitionTest.php`<br>`e2e/admin-workflow.spec.ts` | `[X]` |
 | **TC-ADM-06** | HU-12 | Intento de cierre de ticket (`closed`) por `operator` (Bloqueo 403) | Seguridad / RBAC | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[X]` |
 | **TC-ADM-07** | HU-12 | Cierre definitivo de ticket (`closed`) exclusivo por rol `admin` | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[X]` |
-| **TC-EXP-01** | General | Resiliencia de formulario ante botón Atrás del navegador | Exploratoria | Manual | N/A (Flujo de navegación) | `[X]` |
+| **TC-EXP-01** | General | Resiliencia de formulario ante botón Atrás del navegador | Exploratoria | Híbrido | `e2e/customer-returns-flow.spec.ts` | `[X]` |
 
 ---
 
