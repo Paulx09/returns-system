@@ -26,14 +26,21 @@ export default function Index({ tickets, filters, statuses }) {
         date_to:   filters.date_to   ?? '',
     });
 
+    const updateFilter = (field, value) => {
+        const nextForm = { ...form, [field]: value };
+        setForm(nextForm);
+        router.get(route('admin.tickets.index'), nextForm, { preserveState: true, replace: true });
+    };
+
     const applyFilters = (e) => {
         e.preventDefault();
         router.get(route('admin.tickets.index'), form, { preserveState: true, replace: true });
     };
 
     const clearFilters = () => {
-        setForm({ status: '', date_from: '', date_to: '' });
-        router.get(route('admin.tickets.index'));
+        const emptyForm = { status: '', date_from: '', date_to: '' };
+        setForm(emptyForm);
+        router.get(route('admin.tickets.index'), {}, { preserveState: true, replace: true });
     };
 
     return (
@@ -70,7 +77,7 @@ export default function Index({ tickets, filters, statuses }) {
                             <select
                                 id="filter-status"
                                 value={form.status}
-                                onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                                onChange={e => updateFilter('status', e.target.value)}
                                 className="block w-48 rounded-md border-gray-300 text-sm shadow-sm focus:ring-[#05a060] focus:border-[#05a060]"
                             >
                                 <option value="">Todos los estados</option>
@@ -86,7 +93,7 @@ export default function Index({ tickets, filters, statuses }) {
                                 id="filter-date-from"
                                 type="date"
                                 value={form.date_from}
-                                onChange={e => setForm(f => ({ ...f, date_from: e.target.value }))}
+                                onChange={e => updateFilter('date_from', e.target.value)}
                                 className="block rounded-md border-gray-300 text-sm shadow-sm focus:ring-[#05a060] focus:border-[#05a060]"
                             />
                         </div>
@@ -97,7 +104,7 @@ export default function Index({ tickets, filters, statuses }) {
                                 id="filter-date-to"
                                 type="date"
                                 value={form.date_to}
-                                onChange={e => setForm(f => ({ ...f, date_to: e.target.value }))}
+                                onChange={e => updateFilter('date_to', e.target.value)}
                                 className="block rounded-md border-gray-300 text-sm shadow-sm focus:ring-[#05a060] focus:border-[#05a060]"
                             />
                         </div>
