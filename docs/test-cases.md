@@ -40,8 +40,8 @@ Especificación de Casos de Prueba (Test Cases) para el Sistema de Control y Seg
 | **TC-CLI-09** | HU-04 | Bloqueo por validación MIME (archivo ejecutable renombrado) | Seguridad | Automatizado | `tests/Feature/Returns/EvidenceUploadTest.php` | `[ ]` |
 | **TC-CLI-10** | HU-05 | Generación de Tracking Code (`RET-XXXXXXXX`) y estado `received` | Funcional | Automatizado | `tests/Feature/Returns/ReturnTicketSubmissionTest.php`<br>`e2e/customer-returns-flow.spec.ts` | `[ ]` |
 | **TC-CLI-11** | HU-05 | Prevención de doble envío por clic repetitivo (Doble Submit) | Destructiva | Manual | N/A (Inspección de UI / Network) | `[ ]` |
-| **TC-TRK-01** | HU-06 | Consulta pública de estado mediante Tracking Code y DNI | Funcional | Automatizado | `tests/Feature/Returns/TicketTrackingAndLifecycleTest.php`<br>`postman/returns-api.collection.json` | `[ ]` |
-| **TC-TRK-02** | HU-06 | Consulta pública con DNI erróneo o Tracking Code inválido (404) | Negativa | Automatizado | `tests/Feature/Returns/TicketTrackingAndLifecycleTest.php` | `[ ]` |
+| **TC-TRK-01** | HU-06 | Consulta pública de estado mediante Tracking Code y DNI | Funcional | Automatizado | `tests/Feature/Returns/TicketTrackingAndLifecycleTest.php`<br>`postman/returns-api.collection.json` | `[X]` |
+| **TC-TRK-02** | HU-06 | Consulta pública con DNI erróneo o Tracking Code inválido (404) | Negativa | Automatizado | `tests/Feature/Returns/TicketTrackingAndLifecycleTest.php` | `[X]` |
 | **TC-NOT-01** | HU-07 | Emisión de correo ante transición de estado | Funcional | Automatizado | `tests/Feature/Returns/TicketTrackingAndLifecycleTest.php` | `[ ]` |
 | **TC-ADM-01** | HU-08 | Autenticación interna con roles (`operator` vs `admin`) | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[ ]` |
 | **TC-ADM-02** | HU-08 | Bloqueo de acceso no autenticado a panel administrativo (401/403) | Seguridad | Automatizado | `tests/Feature/Middleware/AdminMiddlewareTest.php` | `[ ]` |
@@ -50,7 +50,7 @@ Especificación de Casos de Prueba (Test Cases) para el Sistema de Control y Seg
 | **TC-ADM-05** | HU-11 | Transición de estado con justificación obligatoria en rechazo/info | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketLifecycleTransitionTest.php` | `[X]` |
 | **TC-ADM-06** | HU-12 | Intento de cierre de ticket (`closed`) por `operator` (Bloqueo 403) | Seguridad / RBAC | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[X]` |
 | **TC-ADM-07** | HU-12 | Cierre definitivo de ticket (`closed`) exclusivo por rol `admin` | Funcional | Automatizado | `tests/Feature/Admin/AdminTicketControllerTest.php`<br>`e2e/admin-workflow.spec.ts` | `[X]` |
-| **TC-EXP-01** | General | Resiliencia de formulario ante botón Atrás del navegador | Exploratoria | Manual | N/A (Flujo de navegación) | `[ ]` |
+| **TC-EXP-01** | General | Resiliencia de formulario ante botón Atrás del navegador | Exploratoria | Manual | N/A (Flujo de navegación) | `[X]` |
 
 ---
 
