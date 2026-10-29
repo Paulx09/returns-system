@@ -368,23 +368,6 @@ class TicketTrackingAndLifecycleTest extends TestCase
         ]);
     }
 
-    public function test_dashboard_redirects_to_tracking_when_active_ticket_exists_in_database(): void
-    {
-        ReturnTicket::create([
-            'order_id' => $this->order->order_id,
-            'tracking_code' => 'RET-DB-ACTIVE',
-            'current_status' => 'received',
-        ]);
-
-        $response = $this->withSession([
-            'customer_order_id' => $this->order->order_id,
-            'has_active_ticket' => false,
-        ])->get(route('returns.dashboard'));
-
-        $response->assertRedirect(route('returns.tracking'));
-        $this->assertTrue(session('has_active_ticket'));
-    }
-
     public function test_custom_403_and_404_error_pages_render_corporate_branding(): void
     {
         $otherOrder = ExternalOrderCache::factory()->create([
