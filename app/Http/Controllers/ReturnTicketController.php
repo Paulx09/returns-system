@@ -24,12 +24,8 @@ class ReturnTicketController extends Controller
     {
         $orderId = $request->session()->get('customer_order_id');
 
-        // Si ya cuenta con un ticket activo en sesión o en base de datos, redirigir a la vista de seguimiento
-        $hasActiveTicket = $request->session()->get('has_active_ticket', false)
-            || ($orderId && ReturnTicket::where('order_id', $orderId)->where('current_status', '!=', 'closed')->exists());
-
-        if ($hasActiveTicket) {
-            $request->session()->put('has_active_ticket', true);
+        // Si ya cuenta con un ticket activo en sesión, redirigir a la vista de seguimiento
+        if ($request->session()->get('has_active_ticket', false)) {
             return redirect()->route('returns.tracking');
         }
 
