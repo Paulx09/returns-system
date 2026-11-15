@@ -47,7 +47,7 @@ test.describe('Auditoría de Accesibilidad (WCAG 2.1 AA)', () => {
 
     // En Inertia SPA la navegación es asíncrona hacia /returns/tracking
     await expect(page).toHaveURL(/.*\/returns\/tracking/, { timeout: 15000 });
-    await expect(page.getByRole('heading', { name: ticket.tracking_code })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: `Pedido #${ticket.order_number}` })).toBeVisible({ timeout: 15000 });
 
     // Esperar que la barra de carga transitoria de Inertia (nprogress) termine
     await page.locator('#nprogress').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});

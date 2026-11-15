@@ -1,7 +1,7 @@
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 
-export default function Success({ trackingCode }) {
+export default function Success({ orderNumber }) {
     return (
         <main className="min-h-screen bg-gray-50 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8">
             <Head title="Solicitud Enviada - Tai Loy" />
@@ -18,17 +18,19 @@ export default function Success({ trackingCode }) {
                     Hemos recibido tu solicitud de devolución correctamente. Un asesor revisará tu caso a la brevedad.
                 </p>
 
-                <div className="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
-                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                        Código de Seguimiento
-                    </p>
-                    <p className="text-3xl font-bold text-gray-900 tracking-widest">
-                        {trackingCode}
-                    </p>
-                </div>
+                {orderNumber && (
+                    <div className="bg-gray-50 rounded-lg p-5 mb-6 border border-gray-200">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                            Pedido Asociado
+                        </p>
+                        <p className="text-2xl font-bold text-gray-900 tracking-wider font-mono">
+                            #{orderNumber}
+                        </p>
+                    </div>
+                )}
 
                 <div className="text-sm text-gray-500 mb-8">
-                    Guarda este código para hacer seguimiento a tu solicitud. Te hemos enviado una copia a tu correo electrónico registrado en la compra.
+                    Puedes consultar el estado de tu solicitud en cualquier momento ingresando al portal con tu Número de Pedido y DNI. Te enviaremos actualizaciones a tu correo electrónico registrado en la compra.
                 </div>
 
                 <div className="space-y-3">

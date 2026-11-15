@@ -68,57 +68,73 @@ class TicketTrackingAndLifecycleTest extends TestCase
         $this->assertSame($this->order->order_id, session('customer_order_id'));
     }
 
-    public function test_customer_can_track_ticket_by_tracking_code_and_dni(): void
+    public function test_track_by_code_endpoint_is_removed(): void
     {
-        // Arrange
-        $ticket = ReturnTicket::create([
-            'order_id' => $this->order->order_id,
-            'tracking_code' => 'RET-DIRECT01',
-            'current_status' => 'received',
-        ]);
-
-        // Act
-        $response = $this->post(route('returns.track-by-code'), [
+        $response = $this->post('/returns/track-by-code', [
             'tracking_code' => 'RET-DIRECT01',
             'customer_dni' => '44556677',
         ]);
 
-        // Assert
-        $response->assertRedirect(route('returns.tracking'));
-        $this->assertSame($this->order->order_id, session('customer_order_id'));
-        $this->assertTrue(session('has_active_ticket'));
+        $response->assertNotFound();
     }
 
-    public function test_track_by_code_rejects_mismatched_dni_or_unknown_code(): void
+    public function test_customer_with_closed_or_rejected_ticket_is_redirected_to_tracking_on_login_even_when_expired(): void
     {
-        // Arrange
+        $expiredOrder = ExternalOrderCache::factory()->create([
+            'order_number' => 'ORD-EXP-CLOSED',
+            'customer_dni' => '55667788',
+            'order_date' => Carbon::now()->subDays(12),
+        ]);
+
         ReturnTicket::create([
-            'order_id' => $this->order->order_id,
-            'tracking_code' => 'RET-SECRET01',
-            'current_status' => 'received',
+            'order_id' => $expiredOrder->order_id,
+            'tracking_code' => 'RET-EXP01',
+            'current_status' => 'rejected',
         ]);
 
-        // Act: DNI equivocado
-        $response = $this->post(route('returns.track-by-code'), [
-            'tracking_code' => 'RET-SECRET01',
-            'customer_dni' => '99999999',
+        $response = $this->post(route('returns.login'), [
+            'order_number' => 'ORD-EXP-CLOSED',
+            'customer_dni' => '55667788',
         ]);
 
-        // Assert
-        $response->assertSessionHasErrors(['tracking']);
-        $this->assertNull(session('customer_order_id'));
+        $response->assertRedirect(route('returns.tracking'));
+        $this->assertFalse(session('has_active_ticket'));
+        $this->assertSame($expiredOrder->order_id, session('customer_order_id'));
     }
 
     public function test_customer_with_active_ticket_is_redirected_from_dashboard_to_tracking(): void
     {
-        // Arrange: cliente autenticado con ticket activo en sesión
+        // Arrange: existe un ticket activo real en BD aunque la sesión no lo marque
+        ReturnTicket::create([
+            'order_id' => $this->order->order_id,
+            'tracking_code' => 'RET-DBACTIVE',
+            'current_status' => 'under_review',
+        ]);
+
+        $response = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+            'has_active_ticket' => false,
+        ])->get(route('returns.dashboard'));
+
+        // Assert
+        $response->assertRedirect(route('returns.tracking'));
+    }
+
+    public function test_customer_with_stale_session_flag_can_open_dashboard_once_ticket_is_rejected(): void
+    {
+        ReturnTicket::create([
+            'order_id' => $this->order->order_id,
+            'tracking_code' => 'RET-REJECTED01',
+            'current_status' => 'rejected',
+        ]);
+
         $response = $this->withSession([
             'customer_order_id' => $this->order->order_id,
             'has_active_ticket' => true,
         ])->get(route('returns.dashboard'));
 
-        // Assert
-        $response->assertRedirect(route('returns.tracking'));
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page->component('Returns/Dashboard'));
     }
 
     public function test_customer_cannot_submit_duplicate_ticket_while_ticket_is_active(): void
@@ -187,6 +203,76 @@ class TicketTrackingAndLifecycleTest extends TestCase
         $this->assertDatabaseCount('return_tickets', 2);
     }
 
+    public function test_customer_can_create_new_ticket_if_previous_ticket_was_rejected(): void
+    {
+        ReturnTicket::create([
+            'order_id' => $this->order->order_id,
+            'tracking_code' => 'RET-OLDREJECTED',
+            'current_status' => 'rejected',
+        ]);
+
+        $file = UploadedFile::fake()->image('foto_nueva.jpg');
+
+        $response = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+        ])->post(route('returns.tickets.store'), [
+            'items' => [
+                [
+                    'order_item_id' => $this->orderItem->order_item_id,
+                    'return_reason_id' => $this->reason->reason_id,
+                    'quantity' => 1,
+                    'condition' => 'damaged',
+                ],
+            ],
+            'customer_notes' => 'Nueva solicitud tras rechazo previo.',
+            'evidences' => [$file],
+        ]);
+
+        $response->assertRedirect(route('returns.success'));
+        $this->assertDatabaseCount('return_tickets', 2);
+    }
+
+    public function test_customer_cannot_submit_item_from_another_order_or_exceeding_quantity(): void
+    {
+        $otherOrder = ExternalOrderCache::factory()->create();
+        $otherOrderItem = OrderItem::factory()->create([
+            'order_id' => $otherOrder->order_id,
+            'quantity' => 5,
+        ]);
+
+        $file = UploadedFile::fake()->image('foto.jpg');
+
+        $foreignItemResponse = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+        ])->post(route('returns.tickets.store'), [
+            'items' => [[
+                'order_item_id' => $otherOrderItem->order_item_id,
+                'return_reason_id' => $this->reason->reason_id,
+                'quantity' => 1,
+                'condition' => 'damaged',
+            ]],
+            'evidences' => [$file],
+        ]);
+
+        $foreignItemResponse->assertSessionHasErrors(['items.0.order_item_id']);
+        $this->assertDatabaseCount('return_tickets', 0);
+
+        $excessQtyResponse = $this->withSession([
+            'customer_order_id' => $this->order->order_id,
+        ])->post(route('returns.tickets.store'), [
+            'items' => [[
+                'order_item_id' => $this->orderItem->order_item_id,
+                'return_reason_id' => $this->reason->reason_id,
+                'quantity' => 99,
+                'condition' => 'damaged',
+            ]],
+            'evidences' => [$file],
+        ]);
+
+        $excessQtyResponse->assertSessionHasErrors(['items.0.quantity']);
+        $this->assertDatabaseCount('return_tickets', 0);
+    }
+
     public function test_customer_can_view_tracking_page_with_ticket_details(): void
     {
         // Arrange: ticket con items, evidencias e historial
@@ -229,8 +315,9 @@ class TicketTrackingAndLifecycleTest extends TestCase
         $response->assertInertia(fn ($page) => $page
             ->component('Returns/Tracking')
             ->has('ticket')
-            ->where('ticket.tracking_code', 'RET-VIEW01')
+            ->missing('ticket.tracking_code')
             ->where('ticket.current_status', 'more_information_requested')
+            ->where('canCreateNewReturn', false)
             ->has('ticket.return_items', 1)
             ->has('ticket.evidences', 1)
             ->has('ticket.status_history', 1)

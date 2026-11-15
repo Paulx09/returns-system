@@ -47,10 +47,15 @@ class CustomerAuthController extends Controller
         }
 
         $activeTicket = ReturnTicket::where('order_id', $order->order_id)
-            ->where('current_status', '!=', 'closed')
+            ->active()
             ->first();
 
-        if (!$activeTicket && !$this->orderService->isWithinReturnPeriod($order, 7)) {
+        $latestTicket = $activeTicket ?? ReturnTicket::where('order_id', $order->order_id)
+            ->latest('created_at')
+            ->first();
+
+        // Allow viewing an existing ticket even after 7 days; only block first-time expired requests.
+        if (!$latestTicket && !$this->orderService->isWithinReturnPeriod($order, 7)) {
             throw ValidationException::withMessages([
                 'login' => 'El plazo máximo de 7 días para devoluciones ha vencido para este pedido.',
             ]);
@@ -58,7 +63,7 @@ class CustomerAuthController extends Controller
 
         $request->session()->put('customer_order_id', $order->order_id);
         $request->session()->put('has_active_ticket', (bool) $activeTicket);
-        
+
         // Prevent session fixation
         $request->session()->regenerate();
 
@@ -67,35 +72,11 @@ class CustomerAuthController extends Controller
                 ->with('info', 'Este pedido ya cuenta con una solicitud de devolución en trámite.');
         }
 
-        return redirect()->route('returns.dashboard');
-    }
-
-    public function trackByCode(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'tracking_code' => 'required|string',
-            'customer_dni'  => 'required|digits:8',
-        ], [
-            'tracking_code.required' => 'El código de seguimiento es obligatorio.',
-            'customer_dni.required'  => 'El DNI es obligatorio.',
-            'customer_dni.digits'    => 'El DNI debe contener exactamente 8 dígitos numéricos.',
-        ]);
-
-        $ticket = ReturnTicket::with('order')
-            ->where('tracking_code', trim($request->input('tracking_code')))
-            ->first();
-
-        if (!$ticket || !$ticket->order || $ticket->order->customer_dni !== trim($request->input('customer_dni'))) {
-            throw ValidationException::withMessages([
-                'tracking' => 'El código de seguimiento o documento de identidad no coinciden con ningún registro.',
-            ]);
+        if ($latestTicket) {
+            return redirect()->route('returns.tracking');
         }
 
-        $request->session()->put('customer_order_id', $ticket->order_id);
-        $request->session()->put('has_active_ticket', $ticket->current_status !== 'closed');
-        $request->session()->regenerate();
-
-        return redirect()->route('returns.tracking');
+        return redirect()->route('returns.dashboard');
     }
 
     public function destroy(Request $request): RedirectResponse

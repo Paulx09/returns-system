@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 
 const STATUS_CONFIG = {
@@ -57,11 +57,15 @@ function getConditionLabel(condition) {
 }
 
 
-export default function Tracking({ ticket, order }) {
+export default function Tracking({ ticket, order, canCreateNewReturn, returnPeriodExpired = false }) {
     const { flash } = usePage().props;
-    const [copied, setCopied] = useState(false);
 
     const currentStatus = ticket.current_status;
+    const isTerminalStatus = currentStatus === 'closed' || currentStatus === 'rejected';
+    const allowNewRequest = typeof canCreateNewReturn === 'boolean'
+        ? canCreateNewReturn
+        : (isTerminalStatus && !returnPeriodExpired);
+
     const statusMeta = STATUS_CONFIG[currentStatus] ?? {
         label: currentStatus,
         badgeBg: 'bg-gray-100 text-gray-700 border-gray-200',
@@ -81,14 +85,6 @@ export default function Tracking({ ticket, order }) {
         evidences: [],
         customer_notes: '',
     });
-
-    const handleCopy = () => {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(ticket.tracking_code);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2500);
-        }
-    };
 
     const submitAdditionalEvidence = (e) => {
         e.preventDefault();
@@ -116,10 +112,11 @@ export default function Tracking({ ticket, order }) {
 
     // Latest comment from support (if any in history)
     const latestComment = ticket.status_history?.find(h => !!h.comment)?.comment;
+    const orderNumberLabel = order?.order_number ? `#${order.order_number}` : '—';
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Head title={`Seguimiento ${ticket.tracking_code} — Tai Loy`} />
+            <Head title={`Seguimiento Pedido ${orderNumberLabel} — Tai Loy`} />
 
             {/* Header */}
             <header className="bg-[#05a060] shadow-md w-full">
@@ -165,32 +162,10 @@ export default function Tracking({ ticket, order }) {
                             <p className="text-xs uppercase font-bold tracking-wider text-gray-500 mb-1">
                                 Seguimiento de Devolución
                             </p>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <h1 className="text-2xl sm:text-3xl font-mono font-extrabold text-gray-900 tracking-wider">
-                                    {ticket.tracking_code}
-                                </h1>
-                                <button
-                                    type="button"
-                                    onClick={handleCopy}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-md border border-gray-300 transition"
-                                    title="Copiar código al portapapeles"
-                                    aria-label="Copiar código de seguimiento"
-                                >
-                                    {copied ? (
-                                        <span className="text-green-700 font-bold">✓ ¡Copiado!</span>
-                                    ) : (
-                                        <>
-                                            <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                            </svg>
-                                            <span>Copiar</span>
-                                        </>
-                                    )}
-                                </button>
-                            </div>
+                            <h1 className="text-2xl sm:text-3xl font-mono font-extrabold text-gray-900 tracking-wider">
+                                Pedido {orderNumberLabel}
+                            </h1>
                             <p className="text-sm text-gray-500 mt-2">
-                                Pedido <span className="font-semibold text-gray-800">#{order?.order_number}</span>
-                                {' · '}
                                 Registrado el {new Date(ticket.created_at).toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' })}
                             </p>
                         </div>
@@ -366,9 +341,9 @@ export default function Tracking({ ticket, order }) {
                 )}
 
                 {currentStatus === 'rejected' && (
-                    <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-lg shadow-sm">
+                    <div className="bg-red-50 border-l-4 border-red-500 p-5 rounded-r-lg shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-start">
-                            <div className="flex-shrink-0 text-red-500 text-xl font-bold">✕</div>
+                            <div className="flex-shrink-0 text-red-500 text-xl font-bold" aria-hidden="true">✕</div>
                             <div className="ml-3">
                                 <h2 className="text-base font-bold text-red-900">
                                     Solicitud no aprobada
@@ -381,8 +356,21 @@ export default function Tracking({ ticket, order }) {
                                         Motivo: "{latestComment}"
                                     </div>
                                 )}
+                                {!allowNewRequest && returnPeriodExpired && (
+                                    <p className="mt-2 text-xs text-red-700 font-medium">
+                                        El plazo máximo de 7 días desde tu compra ha vencido para abrir una nueva solicitud.
+                                    </p>
+                                )}
                             </div>
                         </div>
+                        {allowNewRequest && (
+                            <Link
+                                href={route('returns.dashboard')}
+                                className="inline-flex items-center justify-center shrink-0 px-4 py-2 bg-[#05a060] text-white text-xs font-bold rounded-lg hover:bg-[#04854f] transition shadow-sm"
+                            >
+                                Abrir nueva solicitud de devolución
+                            </Link>
+                        )}
                     </div>
                 )}
 
@@ -400,13 +388,20 @@ export default function Tracking({ ticket, order }) {
                                     Observación final: "{latestComment}"
                                 </p>
                             )}
+                            {!allowNewRequest && returnPeriodExpired && (
+                                <p className="mt-2 text-xs text-gray-600 font-medium">
+                                    El plazo máximo de 7 días desde tu compra ha vencido para abrir una nueva solicitud.
+                                </p>
+                            )}
                         </div>
-                        <Link
-                            href={route('returns.dashboard')}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-[#05a060] text-white text-xs font-bold rounded-lg hover:bg-[#04854f] transition shadow-sm"
-                        >
-                            Registrar nueva solicitud
-                        </Link>
+                        {allowNewRequest && (
+                            <Link
+                                href={route('returns.dashboard')}
+                                className="inline-flex items-center justify-center shrink-0 px-4 py-2 bg-[#05a060] text-white text-xs font-bold rounded-lg hover:bg-[#04854f] transition shadow-sm"
+                            >
+                                Abrir nueva solicitud de devolución
+                            </Link>
+                        )}
                     </div>
                 )}
 
@@ -568,7 +563,7 @@ export default function Tracking({ ticket, order }) {
                         <div className="bg-[#002E6E] text-white rounded-xl shadow-sm p-6 space-y-3">
                             <h3 className="font-bold text-sm text-[#fbdb04]">¿Tienes consultas sobre tu trámite?</h3>
                             <p className="text-xs text-gray-200 leading-relaxed">
-                                Si requieres mayor detalle o presentar documentación adicional para tu caso, ten a la mano tu código de seguimiento <span className="font-mono font-bold text-white">{ticket.tracking_code}</span> y comunícate con nuestro centro de atención.
+                                Si requieres mayor detalle o presentar documentación adicional para tu caso, ten a la mano tu número de pedido <span className="font-mono font-bold text-white">{orderNumberLabel}</span> y comunícate con nuestro centro de atención.
                             </p>
                             <div className="pt-2 text-xs text-gray-300 border-t border-blue-900">
                                 Horario de atención: Lunes a Viernes de 9:00 a 18:00 hrs.

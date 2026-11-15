@@ -45,9 +45,10 @@ class TicketStatusUpdatedMail extends Mailable
     public function envelope(): Envelope
     {
         $statusLabel = self::STATUS_LABELS[$this->ticket->current_status] ?? $this->ticket->current_status;
+        $orderNumber = $this->ticket->order->order_number ?? 'N/A';
 
         return new Envelope(
-            subject: "Devoluciones Tai Loy — Actualización de Ticket {$this->ticket->tracking_code} [{$statusLabel}]",
+            subject: "Devoluciones Tai Loy — Actualización de Devolución Pedido #{$orderNumber} [{$statusLabel}]",
         );
     }
 

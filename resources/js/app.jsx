@@ -29,6 +29,7 @@ if (typeof document === 'undefined' || document.getElementById('app')) {
         },
         progress: {
             color: '#4B5563',
+            includeCSS: false,
         },
     });
 }

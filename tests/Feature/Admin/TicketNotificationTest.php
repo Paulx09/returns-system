@@ -149,9 +149,9 @@ class TicketNotificationTest extends TestCase
         $envelope = $mail->envelope();
         $renderedHtml = $mail->render();
 
-        // Assert: Subject correcto con label formateado
+        // Assert: Subject correcto con label formateado sin exponer tracking_code
         $this->assertSame(
-            "Devoluciones Tai Loy — Actualización de Ticket {$this->ticket->tracking_code} [Aprobado]",
+            "Devoluciones Tai Loy — Actualización de Devolución Pedido #{$this->order->order_number} [Aprobado]",
             $envelope->subject
         );
 
@@ -159,7 +159,8 @@ class TicketNotificationTest extends TestCase
         $this->assertStringContainsString('Carlos Mendoza', $renderedHtml);
         $this->assertStringContainsString('Aprobado', $renderedHtml);
         $this->assertStringContainsString('Devolución aprobada satisfactoriamente.', $renderedHtml);
-        $this->assertStringContainsString($this->ticket->tracking_code, $renderedHtml);
+        $this->assertStringContainsString($this->order->order_number, $renderedHtml);
+        $this->assertStringNotContainsString($this->ticket->tracking_code, $renderedHtml);
     }
 
     public function test_mailable_renders_cleanly_when_comment_is_null(): void
@@ -174,7 +175,7 @@ class TicketNotificationTest extends TestCase
 
         // Assert: Asunto y plantilla renderizan limpiamente sin caja de comentarios
         $this->assertSame(
-            "Devoluciones Tai Loy — Actualización de Ticket {$this->ticket->tracking_code} [En Revisión]",
+            "Devoluciones Tai Loy — Actualización de Devolución Pedido #{$this->order->order_number} [En Revisión]",
             $envelope->subject
         );
         $this->assertStringContainsString('Carlos Mendoza', $renderedHtml);

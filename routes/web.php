@@ -16,9 +16,6 @@ Route::prefix('returns')->name('returns.')->group(function () {
     Route::post('/login', [CustomerAuthController::class, 'store'])
         ->middleware('throttle:5,1')
         ->name('login');
-    Route::post('/track-by-code', [CustomerAuthController::class, 'trackByCode'])
-        ->middleware('throttle:5,1')
-        ->name('track-by-code');
     Route::post('/logout', [CustomerAuthController::class, 'destroy'])->name('logout');
 
     // Rutas protegidas

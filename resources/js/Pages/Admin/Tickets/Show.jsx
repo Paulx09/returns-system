@@ -302,7 +302,7 @@ export default function Show({ ticket, statuses = [], allowed_transitions, auth 
                                     </dd>
                                 </div>
                                 <div>
-                                    <dt className="text-xs text-gray-500 font-medium">Código de Seguimiento</dt>
+                                    <dt className="text-xs text-gray-500 font-medium">Código de Ticket</dt>
                                     <dd className="mt-1 text-sm font-mono font-semibold text-[#05a060]">{ticket.tracking_code}</dd>
                                 </div>
                                 <div>

@@ -117,10 +117,6 @@
             <div class="details-box">
                 <table>
                     <tr>
-                        <td class="label">Código de Seguimiento:</td>
-                        <td class="value">{{ $ticket->tracking_code }}</td>
-                    </tr>
-                    <tr>
                         <td class="label">Número de Pedido:</td>
                         <td class="value">{{ $ticket->order->order_number ?? 'N/A' }}</td>
                     </tr>

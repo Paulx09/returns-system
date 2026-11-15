@@ -210,7 +210,7 @@ describe('Frontend Accessibility (WCAG 2.1 Level AA) Audit', () => {
 
     describe('Returns/Success Component', () => {
         it('has zero accessibility violations in success confirmation state', async () => {
-            const { container } = render(<Success trackingCode="DEV-2026-98765" />);
+            const { container } = render(<Success orderNumber="ORD-987654" />);
 
             const results = await axe(container);
             expect(results).toHaveNoViolations();
@@ -288,7 +288,17 @@ describe('Frontend Accessibility (WCAG 2.1 Level AA) Audit', () => {
                 ...mockTicket,
                 current_status: 'closed',
             };
-            const { container } = render(<Tracking ticket={closedTicket} order={mockOrder} />);
+            const { container } = render(<Tracking ticket={closedTicket} order={mockOrder} canCreateNewReturn={true} />);
+            const results = await axe(container);
+            expect(results).toHaveNoViolations();
+        });
+
+        it('has zero accessibility violations in rejected state', async () => {
+            const rejectedTicket = {
+                ...mockTicket,
+                current_status: 'rejected',
+            };
+            const { container } = render(<Tracking ticket={rejectedTicket} order={mockOrder} canCreateNewReturn={true} />);
             const results = await axe(container);
             expect(results).toHaveNoViolations();
         });

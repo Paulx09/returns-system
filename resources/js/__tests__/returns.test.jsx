@@ -70,7 +70,7 @@ describe('Returns/Start', () => {
 
     it('submits valid order and identity data through the Inertia contract', async () => {
         const user = userEvent.setup();
-        const form = configureForm({ order_number: '', customer_dni: '', tracking_code: '' });
+        const form = configureForm({ order_number: '', customer_dni: '' });
         render(<Start />);
 
         await user.type(screen.getByLabelText('Número de Pedido'), 'ORD-123');
@@ -81,14 +81,14 @@ describe('Returns/Start', () => {
     });
 
     it('renders the contract error when the order is not found or invalid', () => {
-        configureForm({ order_number: '', customer_dni: '', tracking_code: '' }, { errors: { login: 'No se encontró el comprobante.' } });
+        configureForm({ order_number: '', customer_dni: '' }, { errors: { login: 'No se encontró el comprobante.' } });
         render(<Start />);
 
         expect(screen.getByText('No se encontró el comprobante.')).toBeVisible();
     });
 
     it('renders field-level validation errors from the login contract', () => {
-        configureForm({ order_number: '', customer_dni: '', tracking_code: '' }, {
+        configureForm({ order_number: '', customer_dni: '' }, {
             errors: { order_number: 'El pedido es obligatorio.', customer_dni: 'El DNI es obligatorio.' },
         });
         render(<Start />);
@@ -98,46 +98,23 @@ describe('Returns/Start', () => {
     });
 
     it('disables submission while the verification request is processing', () => {
-        configureForm({ order_number: '', customer_dni: '', tracking_code: '' }, { processing: true });
+        configureForm({ order_number: '', customer_dni: '' }, { processing: true });
         render(<Start />);
 
         expect(screen.getByRole('button', { name: 'Verificando...' })).toBeDisabled();
     });
 
-    it('switches to tracking code mode and submits tracking contract', async () => {
-        const user = userEvent.setup();
-        const form = configureForm({ tracking_code: '', customer_dni: '' });
+    it('does not render the legacy tracking code tab', () => {
+        configureForm({ order_number: '', customer_dni: '' });
         render(<Start />);
 
-        await user.click(screen.getByRole('tab', { name: 'Con Código de Seguimiento' }));
-        expect(screen.getByLabelText('Código de Seguimiento')).toBeVisible();
-
-        await user.type(screen.getByLabelText('Código de Seguimiento'), 'RET-12345678');
-        await user.type(screen.getByLabelText('DNI o CE del Comprador'), '87654321');
-        await user.click(screen.getByRole('button', { name: 'Consultar Seguimiento' }));
-
-        expect(form.post).toHaveBeenCalledWith('/route/returns.track-by-code');
-
-        await user.click(screen.getByRole('tab', { name: 'Con Pedido y DNI' }));
-        expect(screen.getByLabelText('Número de Pedido')).toBeVisible();
-    });
-
-    it('renders tracking error and tracking_code validation error when in tracking mode', async () => {
-        const user = userEvent.setup();
-        configureForm(
-            { tracking_code: '', customer_dni: '' },
-            { errors: { tracking: 'No se encontró el ticket.', tracking_code: 'El código es inválido.' } }
-        );
-        render(<Start />);
-
-        await user.click(screen.getByRole('tab', { name: 'Con Código de Seguimiento' }));
-        expect(screen.getByText('No se encontró el ticket.')).toBeVisible();
-        expect(screen.getByText('El código es inválido.')).toBeVisible();
+        expect(screen.queryByRole('tab', { name: 'Con Código de Seguimiento' })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Código de Seguimiento')).not.toBeInTheDocument();
     });
 
     it('blocks submission on client and displays error when DNI is not 8 numeric digits', async () => {
         const user = userEvent.setup();
-        const form = configureForm({ order_number: '', customer_dni: '', tracking_code: '' });
+        const form = configureForm({ order_number: '', customer_dni: '' });
         render(<Start />);
 
         const dniInput = screen.getByLabelText('DNI o CE del Comprador');
@@ -393,10 +370,11 @@ describe('Returns/Dashboard', () => {
 });
 
 describe('Returns/Success', () => {
-    it('renders tracking code and navigation link to tracking view', () => {
-        render(<Success trackingCode="RET-XYZ98765" />);
+    it('renders order number without exposing a tracking code and provides navigation links', () => {
+        render(<Success orderNumber="ORD-123456" />);
 
-        expect(screen.getByText('RET-XYZ98765')).toBeVisible();
+        expect(screen.getByText('#ORD-123456')).toBeVisible();
+        expect(screen.queryByText(/Código de Seguimiento/i)).not.toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Ver Seguimiento de mi Solicitud' })).toHaveAttribute('href', '/route/returns.tracking');
         expect(screen.getByRole('link', { name: 'Volver al Inicio' })).toHaveAttribute('href', '/route/returns.start');
     });
@@ -442,11 +420,11 @@ describe('Returns/Tracking', () => {
         ],
     };
 
-    it('renders tracking code, order number, products, and support comments', () => {
+    it('renders order number, products, and support comments without tracking code', () => {
         render(<Tracking ticket={mockTicket} order={order} />);
 
-        expect(screen.getByRole('heading', { name: 'RET-ABC12345' })).toBeVisible();
-        expect(screen.getByText('#ORD-123')).toBeVisible();
+        expect(screen.getByRole('heading', { name: 'Pedido #ORD-123' })).toBeVisible();
+        expect(screen.queryByText('RET-ABC12345')).not.toBeInTheDocument();
         expect(screen.getByText('Cuaderno')).toBeVisible();
         expect(screen.getByText('Cant: 2')).toBeVisible();
         expect(screen.getByText('foto_evidencia.jpg')).toBeVisible();
@@ -459,7 +437,7 @@ describe('Returns/Tracking', () => {
         expect(screen.getByText('Se requiere información adicional')).toBeVisible();
     });
 
-    it('renders the case closed state with action to register a new ticket', () => {
+    it('renders the case closed state with action to register a new ticket when eligible', () => {
         const closedTicket = {
             ...mockTicket,
             current_status: 'closed',
@@ -473,10 +451,30 @@ describe('Returns/Tracking', () => {
             ],
         };
 
-        render(<Tracking ticket={closedTicket} order={order} />);
+        render(<Tracking ticket={closedTicket} order={order} canCreateNewReturn={true} />);
 
         expect(screen.getByText('Caso Finalizado y Cerrado')).toBeVisible();
-        expect(screen.getByRole('link', { name: 'Registrar nueva solicitud' })).toHaveAttribute('href', '/route/returns.dashboard');
+        expect(screen.getByRole('link', { name: 'Abrir nueva solicitud de devolución' })).toHaveAttribute('href', '/route/returns.dashboard');
+    });
+
+    it('renders the rejected state with action to register a new ticket when eligible', () => {
+        const rejectedTicket = {
+            ...mockTicket,
+            current_status: 'rejected',
+            status_history: [
+                {
+                    history_id: 'hist-4',
+                    new_status: 'rejected',
+                    changed_at: '2026-09-28T09:00:00Z',
+                    comment: 'Evidencia borrosa.',
+                },
+            ],
+        };
+
+        render(<Tracking ticket={rejectedTicket} order={order} canCreateNewReturn={true} />);
+
+        expect(screen.getByText('Solicitud no aprobada')).toBeVisible();
+        expect(screen.getByRole('link', { name: 'Abrir nueva solicitud de devolución' })).toHaveAttribute('href', '/route/returns.dashboard');
     });
 
     it('renders evidence download link pointing to evidence view route', () => {

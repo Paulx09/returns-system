@@ -109,12 +109,12 @@ describe('Tracking Component (White-Box & Branch Coverage Suite)', () => {
     });
 
     describe('UI State Matrix & Stepper Timeline', () => {
-        it('renders received status correctly with tracking details, items and status badge', () => {
+        it('renders received status correctly with order number, items and status badge without tracking code', () => {
             configureForm();
             render(<Tracking ticket={mockBaseTicket} order={mockOrder} />);
 
-            expect(screen.getByRole('heading', { name: 'RET-TL-998877' })).toBeVisible();
-            expect(screen.getByText('#ORD-2026-99')).toBeVisible();
+            expect(screen.getByRole('heading', { name: 'Pedido #ORD-2026-99' })).toBeVisible();
+            expect(screen.queryByText('RET-TL-998877')).not.toBeInTheDocument();
             expect(screen.getAllByText('Recibido')[0]).toBeVisible();
             expect(screen.getByText('Cuaderno Anillado Tai Loy A4')).toBeVisible();
             expect(screen.getByText('Cant: 2')).toBeVisible();
@@ -168,7 +168,7 @@ describe('Tracking Component (White-Box & Branch Coverage Suite)', () => {
             expect(screen.getByText('Indicaciones: "Nota de crédito N° NC-001 emitida."')).toBeVisible();
         });
 
-        it('renders rejected status with rejection indicator and support reason comment', () => {
+        it('renders rejected status with rejection indicator, support comment, and new request action when eligible', () => {
             configureForm();
             const ticket = {
                 ...mockBaseTicket,
@@ -184,14 +184,18 @@ describe('Tracking Component (White-Box & Branch Coverage Suite)', () => {
                 ],
             };
 
-            render(<Tracking ticket={ticket} order={mockOrder} />);
+            render(<Tracking ticket={ticket} order={mockOrder} canCreateNewReturn={true} />);
 
             expect(screen.getAllByText('Rechazado')[0]).toBeVisible();
             expect(screen.getByRole('heading', { name: 'Solicitud no aprobada' })).toBeVisible();
             expect(screen.getByText('Motivo: "Producto presenta sellos violados y uso indebido."')).toBeVisible();
+            expect(screen.getByRole('link', { name: 'Abrir nueva solicitud de devolución' })).toHaveAttribute(
+                'href',
+                '/route/returns.dashboard'
+            );
         });
 
-        it('renders closed status with finalized message and dashboard action link', () => {
+        it('renders closed status with finalized message and dashboard action link when eligible', () => {
             configureForm();
             const ticket = {
                 ...mockBaseTicket,
@@ -207,15 +211,35 @@ describe('Tracking Component (White-Box & Branch Coverage Suite)', () => {
                 ],
             };
 
-            render(<Tracking ticket={ticket} order={mockOrder} />);
+            render(<Tracking ticket={ticket} order={mockOrder} canCreateNewReturn={true} />);
 
             expect(screen.getAllByText('Cerrado')[0]).toBeVisible();
             expect(screen.getByRole('heading', { name: 'Caso Finalizado y Cerrado' })).toBeVisible();
             expect(screen.getByText('Observación final: "Trámite finalizado por caducidad."')).toBeVisible();
-            expect(screen.getByRole('link', { name: 'Registrar nueva solicitud' })).toHaveAttribute(
+            expect(screen.getByRole('link', { name: 'Abrir nueva solicitud de devolución' })).toHaveAttribute(
                 'href',
                 '/route/returns.dashboard'
             );
+        });
+
+        it('hides new request button and shows expired period notice when return window elapsed', () => {
+            configureForm();
+            const ticket = {
+                ...mockBaseTicket,
+                current_status: 'rejected',
+            };
+
+            render(
+                <Tracking
+                    ticket={ticket}
+                    order={mockOrder}
+                    canCreateNewReturn={false}
+                    returnPeriodExpired={true}
+                />
+            );
+
+            expect(screen.queryByRole('link', { name: 'Abrir nueva solicitud de devolución' })).not.toBeInTheDocument();
+            expect(screen.getByText(/plazo máximo de 7 días desde tu compra ha vencido/i)).toBeVisible();
         });
     });
 
@@ -387,24 +411,12 @@ describe('Tracking Component (White-Box & Branch Coverage Suite)', () => {
         });
     });
 
-    describe('Clipboard Interaction & Evidence Links', () => {
-        it('copies tracking code to clipboard when copy button is clicked', async () => {
-            const user = userEvent.setup();
-            const writeTextMock = vi.fn().mockResolvedValue(undefined);
-            Object.defineProperty(navigator, 'clipboard', {
-                value: { writeText: writeTextMock },
-                writable: true,
-                configurable: true,
-            });
-
+    describe('Evidence Links & Tracking Code Removal', () => {
+        it('does not render copy tracking code button', () => {
             configureForm();
             render(<Tracking ticket={mockBaseTicket} order={mockOrder} />);
 
-            const copyBtn = screen.getByRole('button', { name: 'Copiar código de seguimiento' });
-            await user.click(copyBtn);
-
-            expect(writeTextMock).toHaveBeenCalledWith('RET-TL-998877');
-            expect(screen.getByText('✓ ¡Copiado!')).toBeVisible();
+            expect(screen.queryByRole('button', { name: 'Copiar código de seguimiento' })).not.toBeInTheDocument();
         });
 
         it('renders accessible link to view attached evidence file', () => {
@@ -508,44 +520,6 @@ describe('Tracking Component (White-Box & Branch Coverage Suite)', () => {
             expect(legacyLink).toHaveAttribute('href', '/route/returns.evidences.show');
             expect(screen.getByText('custom_status')).toBeVisible();
             expect(screen.getByText('"Actualización personalizada"')).toBeVisible();
-        });
-
-        it('resets copy feedback after timeout and safely handles absent clipboard API', async () => {
-            vi.useFakeTimers();
-            const writeTextMock = vi.fn().mockResolvedValue(undefined);
-            Object.defineProperty(navigator, 'clipboard', {
-                value: { writeText: writeTextMock },
-                writable: true,
-                configurable: true,
-            });
-
-            configureForm();
-            const { unmount } = render(<Tracking ticket={mockBaseTicket} order={mockOrder} />);
-
-            const copyBtn = screen.getByRole('button', { name: 'Copiar código de seguimiento' });
-            fireEvent.click(copyBtn);
-
-            expect(screen.getByText('✓ ¡Copiado!')).toBeVisible();
-
-            act(() => {
-                vi.advanceTimersByTime(3000);
-            });
-            expect(screen.getByText('Copiar')).toBeVisible();
-
-            unmount();
-
-            // Absence of clipboard
-            Object.defineProperty(navigator, 'clipboard', {
-                value: undefined,
-                writable: true,
-                configurable: true,
-            });
-            render(<Tracking ticket={mockBaseTicket} order={mockOrder} />);
-            const copyBtn2 = screen.getByRole('button', { name: 'Copiar código de seguimiento' });
-            fireEvent.click(copyBtn2);
-            expect(screen.queryByText('✓ ¡Copiado!')).not.toBeInTheDocument();
-
-            vi.useRealTimers();
         });
     });
 });

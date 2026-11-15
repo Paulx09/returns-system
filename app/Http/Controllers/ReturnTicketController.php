@@ -8,28 +8,50 @@ use App\Models\ReturnItem;
 use App\Models\ReturnReason;
 use App\Models\ReturnTicket;
 use App\Models\TicketStatusHistory;
+use App\Services\ExternalOrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ReturnTicketController extends Controller
 {
+    public function __construct(private ExternalOrderService $orderService)
+    {
+    }
+
     public function dashboard(Request $request): Response|RedirectResponse
     {
         $orderId = $request->session()->get('customer_order_id');
 
-        // Si ya cuenta con un ticket activo en sesión, redirigir a la vista de seguimiento
-        if ($request->session()->get('has_active_ticket', false)) {
+        $hasActiveTicket = ReturnTicket::where('order_id', $orderId)
+            ->active()
+            ->exists();
+        $request->session()->put('has_active_ticket', $hasActiveTicket);
+
+        if ($hasActiveTicket) {
             return redirect()->route('returns.tracking');
         }
 
         $order = ExternalOrderCache::with('orderItems')->findOrFail($orderId);
+
+        if (!$this->orderService->isWithinReturnPeriod($order, 7)) {
+            if (ReturnTicket::where('order_id', $orderId)->exists()) {
+                return redirect()->route('returns.tracking')
+                    ->with('error', 'El plazo máximo de 7 días para devoluciones ha vencido para este pedido.');
+            }
+
+            return redirect()->route('returns.start')
+                ->withErrors(['login' => 'El plazo máximo de 7 días para devoluciones ha vencido para este pedido.']);
+        }
+
         $reasons = ReturnReason::all();
 
         return Inertia::render('Returns/Dashboard', [
@@ -42,9 +64,8 @@ class ReturnTicketController extends Controller
     {
         $orderId = $request->session()->get('customer_order_id');
 
-        // Validar que no exista un ticket activo
         $hasActiveTicket = ReturnTicket::where('order_id', $orderId)
-            ->where('current_status', '!=', 'closed')
+            ->active()
             ->exists();
 
         if ($hasActiveTicket) {
@@ -53,9 +74,20 @@ class ReturnTicketController extends Controller
                 ->with('error', 'Ya existe una solicitud de devolución en trámite para este pedido.');
         }
 
+        $order = ExternalOrderCache::with('orderItems')->findOrFail($orderId);
+
+        if (!$this->orderService->isWithinReturnPeriod($order, 7)) {
+            return redirect()->route('returns.tracking')
+                ->with('error', 'El plazo máximo de 7 días para devoluciones ha vencido para este pedido.');
+        }
+
         $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.order_item_id' => 'required|uuid|exists:order_items,order_item_id',
+            'items.*.order_item_id' => [
+                'required',
+                'uuid',
+                Rule::exists('order_items', 'order_item_id')->where('order_id', $orderId),
+            ],
             'items.*.return_reason_id' => 'required|uuid|exists:return_reasons,reason_id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.condition' => 'required|string|in:sealed,opened,damaged',
@@ -66,6 +98,7 @@ class ReturnTicketController extends Controller
         ], [
             'items.required' => 'Debes seleccionar al menos un producto para devolver.',
             'items.min' => 'Debes seleccionar al menos un producto para devolver.',
+            'items.*.order_item_id.exists' => 'El producto seleccionado no pertenece a este pedido.',
             'items.*.return_reason_id.required' => 'Selecciona un motivo de devolución válido.',
             'items.*.return_reason_id.exists' => 'El motivo de devolución seleccionado no es válido.',
             'items.*.quantity.required' => 'Indica la cantidad a devolver.',
@@ -83,8 +116,19 @@ class ReturnTicketController extends Controller
             'evidences.*.max' => 'Cada archivo de evidencia no debe superar los 5 MB.',
             'evidences.*.uploaded' => 'Cada archivo de evidencia no debe superar los 5 MB.',
         ]);
+
+        $orderItemsById = $order->orderItems->keyBy('order_item_id');
+        foreach ($request->input('items') as $index => $itemData) {
+            $orderItem = $orderItemsById->get($itemData['order_item_id']);
+            if ($orderItem && (int) $itemData['quantity'] > (int) $orderItem->quantity) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.quantity" => 'La cantidad a devolver no puede superar la cantidad comprada.',
+                ]);
+            }
+        }
         
         DB::beginTransaction();
+        $storedPaths = [];
         try {
             // 1. Create Ticket
             $ticket = ReturnTicket::create([
@@ -114,7 +158,6 @@ class ReturnTicketController extends Controller
             }
 
             // 3. Upload Evidences
-            $storedPaths = [];
             if ($request->hasFile('evidences')) {
                 /** @var array<UploadedFile> $files */
                 $files = $request->file('evidences');
@@ -138,7 +181,7 @@ class ReturnTicketController extends Controller
 
             $request->session()->put('has_active_ticket', true);
 
-            return redirect()->route('returns.success')->with('tracking_code', $ticket->tracking_code);
+            return redirect()->route('returns.success');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -152,15 +195,10 @@ class ReturnTicketController extends Controller
     public function success(Request $request): Response
     {
         $orderId = $request->session()->get('customer_order_id');
-        $trackingCode = session('tracking_code');
-
-        if (!$trackingCode && $orderId) {
-            $latestTicket = ReturnTicket::where('order_id', $orderId)->latest('created_at')->first();
-            $trackingCode = $latestTicket?->tracking_code;
-        }
+        $order = $orderId ? ExternalOrderCache::find($orderId) : null;
 
         return Inertia::render('Returns/Success', [
-            'trackingCode' => $trackingCode,
+            'orderNumber' => $order?->order_number,
         ]);
     }
 
@@ -184,10 +222,18 @@ class ReturnTicketController extends Controller
             return redirect()->route('returns.dashboard');
         }
 
+        $withinReturnPeriod = $this->orderService->isWithinReturnPeriod($order, 7);
+        $canCreateNewReturn = !$ticket->isActive() && $withinReturnPeriod;
+        $request->session()->put('has_active_ticket', $ticket->isActive());
+
+        $ticket->makeHidden('tracking_code');
+
         return Inertia::render('Returns/Tracking', [
-            'ticket' => $ticket,
-            'order'  => $order,
-        ]); 
+            'ticket'             => $ticket,
+            'order'              => $order,
+            'canCreateNewReturn' => $canCreateNewReturn,
+            'returnPeriodExpired' => !$withinReturnPeriod,
+        ]);
     }
 
     /**

@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { useForm, Head, Link } from '@inertiajs/react';
 
 export default function Start() {
-    const [mode, setMode] = useState('order'); // 'order' | 'tracking'
     const [clientDniError, setClientDniError] = useState(null);
     const { data, setData, post, processing, errors } = useForm({
         order_number: '',
         customer_dni: '',
-        tracking_code: '',
     });
 
     const dniError = clientDniError || errors.customer_dni;
@@ -20,11 +18,7 @@ export default function Start() {
             return;
         }
         setClientDniError(null);
-        if (mode === 'tracking') {
-            post(route('returns.track-by-code'));
-        } else {
-            post(route('returns.login'));
-        }
+        post(route('returns.login'));
     };
 
     return (
@@ -52,90 +46,35 @@ export default function Start() {
                     </div>
                 </div>
 
-                {/* Right Column: Login / Track Form */}
+                {/* Right Column: Login Form */}
                 <div className="w-full md:w-1/2 p-8 sm:p-10 flex flex-col justify-center">
-                    {/* Mode Toggle */}
-                    <div className="flex border-b border-gray-200 mb-6" role="tablist" aria-label="Método de consulta">
-                        <button
-                            type="button"
-                            role="tab"
-                            aria-selected={mode === 'order'}
-                            onClick={() => setMode('order')}
-                            className={`pb-3 text-sm font-bold border-b-2 mr-6 transition ${
-                                mode === 'order'
-                                    ? 'border-[#05a060] text-[#05a060]'
-                                    : 'border-transparent text-gray-400 hover:text-gray-600'
-                            }`}
-                        >
-                            Con Pedido y DNI
-                        </button>
-                        <button
-                            type="button"
-                            role="tab"
-                            aria-selected={mode === 'tracking'}
-                            onClick={() => setMode('tracking')}
-                            className={`pb-3 text-sm font-bold border-b-2 transition ${
-                                mode === 'tracking'
-                                    ? 'border-[#05a060] text-[#05a060]'
-                                    : 'border-transparent text-gray-400 hover:text-gray-600'
-                            }`}
-                        >
-                            Con Código de Seguimiento
-                        </button>
-                    </div>
-
                     <h2 className="text-xl font-bold text-gray-800 mb-4 text-center md:text-left">
-                        {mode === 'order' ? 'Iniciar o Consultar Solicitud' : 'Consultar Estado de Ticket'}
+                        Iniciar o Consultar Solicitud
                     </h2>
                     
                     <form onSubmit={submit} className="space-y-5" noValidate>
-                        {mode === 'order' ? (
-                            <div>
-                                <label htmlFor="order_number" className="block text-sm font-semibold text-gray-700">
-                                    Número de Pedido
-                                </label>
-                                <input
-                                    id="order_number"
-                                    type="text"
-                                    name="order_number"
-                                    value={data.order_number}
-                                    className="mt-2 block w-full border-gray-300 focus:border-[#05a060] focus:ring-[#05a060] rounded-lg shadow-sm"
-                                    onChange={(e) => setData('order_number', e.target.value)}
-                                    required
-                                    aria-invalid={errors.order_number ? 'true' : 'false'}
-                                    aria-describedby={errors.order_number ? 'error-order_number' : undefined}
-                                    placeholder="Ej. ORD-123456"
-                                />
-                                {errors.order_number && (
-                                    <div id="error-order_number" role="alert" className="mt-2 text-sm text-red-600 font-medium">
-                                        {errors.order_number}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div>
-                                <label htmlFor="tracking_code" className="block text-sm font-semibold text-gray-700">
-                                    Código de Seguimiento
-                                </label>
-                                <input
-                                    id="tracking_code"
-                                    type="text"
-                                    name="tracking_code"
-                                    value={data.tracking_code}
-                                    className="mt-2 block w-full border-gray-300 focus:border-[#05a060] focus:ring-[#05a060] rounded-lg shadow-sm font-mono uppercase"
-                                    onChange={(e) => setData('tracking_code', e.target.value)}
-                                    required
-                                    aria-invalid={errors.tracking_code ? 'true' : 'false'}
-                                    aria-describedby={errors.tracking_code ? 'error-tracking_code' : undefined}
-                                    placeholder="Ej. RET-8K29FA01"
-                                />
-                                {errors.tracking_code && (
-                                    <div id="error-tracking_code" role="alert" className="mt-2 text-sm text-red-600 font-medium">
-                                        {errors.tracking_code}
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        <div>
+                            <label htmlFor="order_number" className="block text-sm font-semibold text-gray-700">
+                                Número de Pedido
+                            </label>
+                            <input
+                                id="order_number"
+                                type="text"
+                                name="order_number"
+                                value={data.order_number}
+                                className="mt-2 block w-full border-gray-300 focus:border-[#05a060] focus:ring-[#05a060] rounded-lg shadow-sm"
+                                onChange={(e) => setData('order_number', e.target.value)}
+                                required
+                                aria-invalid={errors.order_number ? 'true' : 'false'}
+                                aria-describedby={errors.order_number ? 'error-order_number' : undefined}
+                                placeholder="Ej. ORD-123456"
+                            />
+                            {errors.order_number && (
+                                <div id="error-order_number" role="alert" className="mt-2 text-sm text-red-600 font-medium">
+                                    {errors.order_number}
+                                </div>
+                            )}
+                        </div>
 
                         <div>
                             <label htmlFor="customer_dni" className="block text-sm font-semibold text-gray-700">
@@ -168,7 +107,7 @@ export default function Start() {
                             )}
                         </div>
 
-                        {(errors.login || errors.tracking) && (
+                        {errors.login && (
                             <div role="alert" aria-live="assertive" className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
                                 <div className="flex">
                                     <div className="flex-shrink-0">
@@ -178,7 +117,7 @@ export default function Start() {
                                     </div>
                                     <div className="ml-3">
                                         <p className="text-sm text-red-700 font-medium">
-                                            {errors.login || errors.tracking}
+                                            {errors.login}
                                         </p>
                                     </div>
                                 </div>
@@ -191,20 +130,16 @@ export default function Start() {
                                 disabled={processing}
                                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-[#05a060] hover:bg-[#04854f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#05a060] disabled:opacity-50 transition duration-200 ease-in-out"
                             >
-                                {processing
-                                    ? 'Verificando...'
-                                    : (mode === 'order' ? 'Iniciar Solicitud' : 'Consultar Seguimiento')}
+                                {processing ? 'Verificando...' : 'Iniciar Solicitud'}
                             </button>
                         </div>
                     </form>
 
                     <div className="mt-5 text-center text-xs text-gray-500 space-y-1">
                         <p>* Solo puedes solicitar la devolución dentro de los 7 días posteriores a tu compra.</p>
-                        {mode === 'order' && (
-                            <p className="text-gray-400">
-                                Si ya cuentas con un ticket registrado para este pedido, te mostraremos su estado de seguimiento directamente.
-                            </p>
-                        )}
+                        <p className="text-gray-400">
+                            Si ya cuentas con un ticket registrado para este pedido, te mostraremos su estado de seguimiento directamente.
+                        </p>
                     </div>
                 </div>
             </div>

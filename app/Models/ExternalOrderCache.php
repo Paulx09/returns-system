@@ -46,7 +46,7 @@ class ExternalOrderCache extends Model
     public function activeReturnTicket(): HasOne
     {
         return $this->hasOne(ReturnTicket::class, 'order_id', 'order_id')
-            ->where('current_status', '!=', 'closed');
+            ->whereNotIn('current_status', ReturnTicket::TERMINAL_STATUSES);
     }
 
     /** @return HasOne<ReturnTicket, $this> */

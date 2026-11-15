@@ -84,41 +84,34 @@ test.describe('Flujo de Devoluciones del Cliente (HU-01 a HU-06)', () => {
       submitButton.click(),
     ]);
 
-    // Verificación de la pantalla de éxito con Tracking Code generado
+    // Verificación de la pantalla de éxito con número de pedido asociado (sin tracking code)
     await expect(page).toHaveURL(/.*\/returns\/success/, { timeout: 15000 });
     await expect(page.getByRole('heading', { name: '¡Solicitud Registrada!' })).toBeVisible();
-
-    // Extraer y validar el Tracking Code RET-XXXXXXXX
-    const trackingCodeElement = page.locator('text=/RET-[A-Z0-9]{8}/').first();
-    await expect(trackingCodeElement).toBeVisible();
-    const trackingCodeText = (await trackingCodeElement.textContent())?.trim();
-    expect(trackingCodeText).toMatch(/^RET-[A-Z0-9]{8}$/);
+    await expect(page.getByText('#ORD-123456')).toBeVisible();
 
     // ── Paso 5 (TC-EXP-01): Resiliencia ante botón Atrás del navegador ──
     await page.goBack();
     await expect(page).not.toHaveURL(/.*\/returns\/dashboard/);
   });
 
-  test('Escenario 3 (HU-06): Consulta de Tracking Público y verificación de estado "received"', async ({ page, isMobile }) => {
+  test('Escenario 3 (HU-06): Consulta de Tracking por Pedido y DNI y verificación de estado "received"', async ({ page, isMobile }) => {
     test.setTimeout(90000);
     const ticket = seedTicket('received');
 
     await page.goto('/returns/start');
     await page.waitForLoadState('networkidle');
 
-    // Cambiar a la pestaña de consulta por código de seguimiento
-    await page.getByRole('tab', { name: 'Con Código de Seguimiento' }).click();
-    await page.getByLabel('Código de Seguimiento').fill(ticket.tracking_code);
+    await page.getByLabel('Número de Pedido').fill(ticket.order_number);
     await page.getByLabel('DNI o CE del Comprador').fill(ticket.customer_dni);
 
     await Promise.all([
-      page.waitForResponse((resp) => resp.url().includes('/returns/track-by-code') && resp.status() === 302),
-      page.getByRole('button', { name: 'Consultar Seguimiento' }).click(),
+      page.waitForResponse((resp) => resp.url().includes('/returns/login') && resp.status() === 302),
+      page.getByRole('button', { name: 'Iniciar Solicitud' }).click(),
     ]);
 
     // Verificación en la vista /returns/tracking
     await expect(page).toHaveURL(/.*\/returns\/tracking/, { timeout: 15000 });
-    await expect(page.getByRole('heading', { name: ticket.tracking_code })).toBeVisible();
+    await expect(page.getByRole('heading', { name: `Pedido #${ticket.order_number}` })).toBeVisible();
 
     // Confirmar estado inicial 'received' (Recibido) en el badge y stepper
     await expect(page.getByText('Recibido').first()).toBeVisible();
@@ -161,7 +154,7 @@ test.describe('Flujo de Devoluciones del Cliente (HU-01 a HU-06)', () => {
     await expect(
       page.getByText(/Este pedido ya cuenta con una solicitud de devolución en trámite/i)
     ).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'RET-12345678' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Pedido #ORD-ACTIVE-01' })).toBeVisible();
     await expect(page.getByText('Recibido').first()).toBeVisible();
   });
 

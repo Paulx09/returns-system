@@ -27,6 +27,16 @@ class ReturnTicket extends Model
     ];
 
     /**
+     * Statuses that conclude a return ticket lifecycle and allow opening a new request.
+     *
+     * @var list<string>
+     */
+    public const TERMINAL_STATUSES = [
+        'closed',
+        'rejected',
+    ];
+
+    /**
      * @var array<string, list<string>>
      */
     public const ALLOWED_TRANSITIONS = [
@@ -82,21 +92,21 @@ class ReturnTicket extends Model
     }
 
     /**
-     * Scope a query to only include active (non-closed) tickets.
+     * Scope a query to only include active (non-terminal) tickets.
      *
      * @param \Illuminate\Database\Eloquent\Builder<ReturnTicket> $query
      * @return \Illuminate\Database\Eloquent\Builder<ReturnTicket>
      */
     public function scopeActive($query)
     {
-        return $query->where('current_status', '!=', 'closed');
+        return $query->whereNotIn('current_status', self::TERMINAL_STATUSES);
     }
 
     /**
-     * Check if the ticket is active (not closed).
+     * Check if the ticket is active (not closed or rejected).
      */
     public function isActive(): bool
     {
-        return $this->current_status !== 'closed';
+        return !in_array($this->current_status, self::TERMINAL_STATUSES, true);
     }
 }

@@ -21,7 +21,7 @@ class ExternalOrderCacheFactory extends Factory
             'customer_full_name' => $this->faker->name(),
             'customer_email' => $this->faker->unique()->safeEmail(),
             'customer_dni' => $this->faker->numerify('########'),
-            'order_date' => $this->faker->dateTimeBetween('-15 days', 'now'),
+            'order_date' => $this->faker->dateTimeBetween('-6 days', 'now'),
         ];
     }
 }
