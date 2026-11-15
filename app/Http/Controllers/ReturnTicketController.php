@@ -31,16 +31,16 @@ class ReturnTicketController extends Controller
     {
         $orderId = $request->session()->get('customer_order_id');
 
-        $hasActiveTicket = ReturnTicket::where('order_id', $orderId)
-            ->active()
-            ->exists();
+        $order = ExternalOrderCache::with('orderItems')
+            ->withExists('activeReturnTicket')
+            ->findOrFail($orderId);
+
+        $hasActiveTicket = (bool) $order->active_return_ticket_exists;
         $request->session()->put('has_active_ticket', $hasActiveTicket);
 
         if ($hasActiveTicket) {
             return redirect()->route('returns.tracking');
         }
-
-        $order = ExternalOrderCache::with('orderItems')->findOrFail($orderId);
 
         if (!$this->orderService->isWithinReturnPeriod($order, 7)) {
             if (ReturnTicket::where('order_id', $orderId)->exists()) {
